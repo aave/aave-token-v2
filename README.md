@@ -95,19 +95,16 @@ The proxies will be initialized during the deployment with the `$AAVE_ADMIN` add
 | \$MNEMONIC\_\<NETWORK\> | Mnemonic phrase, only required when using a network different than local network.   |
 | \$ETHERESCAN_KEY        | Etherscan key, not currently used, but will be required for contracts verification. |
 
-## Audits
+## Audits v1
 
 The Solidity code in this repository has undergone 2 traditional smart contracts' audits by Consensys Diligence and Certik, and properties' verification process by Certora. The reports are:
 - [Consensys Diligence](https://diligence.consensys.net/audits/2020/07/aave-token/)
 - [Certik](audits/AaveTokenReport_CertiK.pdf)
 - [Certora](audits/AaveTokenVerification_by_Certora.pdf)
 
-## Current Mainnet contracts (25/09/2020)
+## Audits v2
 
-- **AaveToken proxy**: [0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9](https://etherscan.io/address/0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9)
-- **AaveToken implementation**: [0xea86074fdac85e6a605cd418668c63d2716cdfbc](https://etherscan.io/address/0xea86074fdac85e6a605cd418668c63d2716cdfbc)
-- **LendToAaveMigrator proxy**: [0x317625234562b1526ea2fac4030ea499c5291de4](https://etherscan.io/address/0x317625234562b1526ea2fac4030ea499c5291de4)
-- **LendToAaveMigrator implementation**: [0x86241b6c526998582556f7c0342d8863b604b17b](https://etherscan.io/address/0x86241b6c526998582556f7c0342d8863b604b17b)
+The new StakedAaveV2 implementation has been audited by Peckshield and property checked by Certora.
 
 ## Credits
 
