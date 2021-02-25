@@ -3,7 +3,7 @@ import {fail} from 'assert';
 import {solidity} from 'ethereum-waffle';
 import {TestEnv, makeSuite} from './helpers/make-suite';
 import {ProtocolErrors, eContractid} from '../helpers/types';
-import {DRE, advanceBlock, timeLatest, waitForTx, evmRevert, evmSnapshot} from '../helpers/misc-utils';
+import {DRE, advanceBlock, timeLatest, waitForTx} from '../helpers/misc-utils';
 import {
   buildDelegateParams,
   buildDelegateByTypeParams,
@@ -19,12 +19,11 @@ import {parseEther} from 'ethers/lib/utils';
 
 chai.use(solidity);
 
-makeSuite('Delegation', (testEnv: TestEnv) => {
+makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
   const {} = ProtocolErrors;
   let aaveInstance = {} as AaveTokenV2;
   let firstActionBlockNumber = 0;
   let secondActionBlockNumber = 0;
-  let revertId: string;
 
   it('Updates the implementation of the AAVE token to V2', async () => {
     const {aaveToken, users} = testEnv;
@@ -42,10 +41,11 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     await aaveTokenProxy
       .connect(users[0].signer)
       .upgradeToAndCall(AAVEv2.address, encodedIntialize);
-    
-    revertId = await evmSnapshot();
 
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
+    await aaveInstance.connect(users[1].signer).delegate(users[1].address);
+    await aaveInstance.connect(users[2].signer).delegate(users[2].address);
+    await aaveInstance.connect(users[3].signer).delegate(users[3].address);
   });
 
   // Blocked by https://github.com/nomiclabs/hardhat/issues/1081
@@ -65,6 +65,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     await aaveInstance.connect(zeroUser).delegateByType(user1.address, '0');
 
     const delegatee = await aaveInstance.getDelegateeByType(ZERO_ADDRESS, '0');
+
     expect(delegatee.toString()).to.be.equal(ZERO_ADDRESS);
   });
 
@@ -72,12 +73,10 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     const {users} = testEnv;
 
     await aaveInstance.connect(users[1].signer).delegateByType(users[2].address, '0');
-    
+
     const delegatee = await aaveInstance.getDelegateeByType(users[1].address, '0');
 
     expect(delegatee.toString()).to.be.equal(users[2].address);
-    expect(await aaveInstance.isSnapshotted(users[1].address, '0')).to.be.equal(true);
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(true);
   });
 
   it('User 1 tries to delegate proposition power to user 3', async () => {
@@ -88,8 +87,6 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     const delegatee = await aaveInstance.getDelegateeByType(users[1].address, '1');
 
     expect(delegatee.toString()).to.be.equal(users[3].address);
-    expect(await aaveInstance.isSnapshotted(users[1].address, '1')).to.be.equal(true);
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(true);
   });
 
   it('Starts the migration', async () => {
@@ -109,7 +106,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
       .upgradeToAndCall(lendToAaveMigratorImpl.address, lendToAaveMigratorInitializeEncoded);
   });
 
-  it('User1 tries to delegate voting power to FF_ADDRESS', async () => {
+  it('User1 tries to delegate voting power to 0XFF_ADDRESS', async () => {
     const {
       users: [, , , , , user],
       lendToken,
@@ -146,8 +143,6 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     await lendToken.connect(user1.signer).approve(lendToAaveMigrator.address, lendBalance);
 
     await lendToAaveMigrator.connect(user1.signer).migrateFromLEND(lendBalance);
-    expect(await aaveInstance.isSnapshotted(lendToAaveMigrator.address, '0')).to.be.equal(false);
-    expect(await aaveInstance.isSnapshotted(lendToAaveMigrator.address, '1')).to.be.equal(false);
 
     const lendBalanceAfterMigration = await lendToken.balanceOf(user1.address);
     const aaveBalanceAfterMigration = await aaveInstance.balanceOf(user1.address);
@@ -162,30 +157,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
     const user3VotingPower = await aaveInstance.getPowerCurrent(user3.address, '0');
     const user3PropPower = await aaveInstance.getPowerCurrent(user3.address, '1');
-    expect(await aaveInstance.isSnapshotted(users[1].address, '0')).to.be.equal(
-      true,
-      'user 1 voting should be snapshotted'
-      );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'user 2 voting should be snapshotted'
-      );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'user 3 voting should be snapshotted'
-      );
-    expect(await aaveInstance.isSnapshotted(users[1].address, '0')).to.be.equal(
-      true,
-      'user 1 prop should be snapshotted'
-      );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'user 2 prop should be snapshotted'
-      );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'user 3 prop should be snapshotted'
-      );
+
     expect(user1PropPower.toString()).to.be.equal('0', 'Invalid prop power for user 1');
     expect(user1VotingPower.toString()).to.be.equal('0', 'Invalid voting power for user 1');
 
@@ -216,32 +188,14 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
     await lendToken.connect(user2.signer).approve(lendToAaveMigrator.address, lendBalance);
 
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted before'
-    );
-  
     await lendToAaveMigrator.connect(user2.signer).migrateFromLEND(lendBalance);
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'user 2 vote should be snapshotted after, received delegation from user 1'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      false,
-      'user 2 should prop not be snapshotted after, simple transfer'
-    );
 
     const user2VotingPower = await aaveInstance.getPowerCurrent(user2.address, '0');
     const user2PropPower = await aaveInstance.getPowerCurrent(user2.address, '1');
 
     expect(user2PropPower.toString()).to.be.equal(
-      '0',
-      'Invalid prop power for user 2: snapshot should be off'
+      expectedAaveBalanceAfterMigration.toString(),
+      'Invalid prop power for user 3'
     );
     expect(user2VotingPower.toString()).to.be.equal(
       expectedAaveBalanceAfterMigration.mul('2').toString(),
@@ -260,25 +214,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
     await lendToken.connect(user3.signer).approve(lendToAaveMigrator.address, lendBalance);
 
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'User 3 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      true,
-      'User 3 Prop should be snapshotted before'
-    );
-
     await lendToAaveMigrator.connect(user3.signer).migrateFromLEND(lendBalance);
-
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      false,
-      'user 3 vote should not be snapshotted after, simple transfer'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      true,
-      'user 3 should prop be snapshotted after, , received delegation from user 1'
-    );
 
     const user3VotingPower = await aaveInstance.getPowerCurrent(user3.address, '0');
     const user3PropPower = await aaveInstance.getPowerCurrent(user3.address, '1');
@@ -288,7 +224,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
       'Invalid prop power for user 3'
     );
     expect(user3VotingPower.toString()).to.be.equal(
-      '0',
+      expectedAaveBalanceAfterMigration.toString(),
       'Invalid voting power for user 3'
     );
   });
@@ -298,34 +234,13 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     const user2 = users[2];
     const user3 = users[3];
 
-    const expectedAaveBalanceAfterUser2 = parseEther('1');
     const expectedDelegatedVotingPower = parseEther('2');
     const expectedDelegatedPropPower = parseEther('3');
-    
 
     await aaveInstance.connect(user2.signer).delegate(user3.address);
 
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'User 3 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      true,
-      'User 3 Prop should be snapshotted after'
-    );
-
     const user3VotingPower = await aaveInstance.getPowerCurrent(user3.address, '0');
     const user3PropPower = await aaveInstance.getPowerCurrent(user3.address, '1');
-    const user2VotingPower = await aaveInstance.getPowerCurrent(user2.address, '0');
-    const user2PropPower = await aaveInstance.getPowerCurrent(user2.address, '1');
 
     expect(user3VotingPower.toString()).to.be.equal(
       expectedDelegatedVotingPower.toString(),
@@ -335,23 +250,14 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
       expectedDelegatedPropPower.toString(),
       'Invalid prop power for user 3'
     );
-    expect(user2VotingPower.toString()).to.be.equal(
-      expectedAaveBalanceAfterUser2,
-      'Invalid voting power for user 2'
-    );
-    expect(user2PropPower.toString()).to.be.equal(
-      '0',
-      'Invalid prop power for user 2'
-    );
   });
 
-  it('User 1 delegated to themself, remove voting and prop power to user 2 and 3, snaphot still on', async () => {
+  it('User 1 removes voting and prop power to user 2 and 3', async () => {
     const {users} = testEnv;
     const user1 = users[1];
     const user2 = users[2];
     const user3 = users[3];
 
-    revertId = await evmSnapshot();
     await aaveInstance.connect(user1.signer).delegate(user1.address);
 
     const user2VotingPower = await aaveInstance.getPowerCurrent(user2.address, '0');
@@ -368,54 +274,6 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
     expect(user2VotingPower.toString()).to.be.equal(
       expectedUser2DelegatedVotingPower.toString(),
-      'Invalid voting power for user 2'
-    );
-    expect(user2PropPower.toString()).to.be.equal(
-      expectedUser2DelegatedPropPower.toString(),
-      'Invalid prop power for user 2'
-    );
-
-    expect(user3VotingPower.toString()).to.be.equal(
-      expectedUser3DelegatedVotingPower.toString(),
-      'Invalid voting power for user 3'
-    );
-    expect(user3PropPower.toString()).to.be.equal(
-      expectedUser3DelegatedPropPower.toString(),
-      'Invalid prop power for user 3'
-    );
-    expect(await aaveInstance.isSnapshotted(users[1].address, '0')).to.be.equal(
-      true,
-      'User 1 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[1].address, '1')).to.be.equal(
-      true,
-      'User 1 Prop should be snapshotted after'
-    );
-    await(evmRevert(revertId));
-  });
-  it('User 1 delegated to 0x00, remove voting and prop power to user 2 and 3, snaphot off', async () => {
-    const {users} = testEnv;
-    const user1 = users[1];
-    const user2 = users[2];
-    const user3 = users[3];
-
-    revertId = await evmSnapshot();
-    await aaveInstance.connect(user1.signer).delegate(ZERO_ADDRESS);
-
-    const user2VotingPower = await aaveInstance.getPowerCurrent(user2.address, '0');
-    const user2PropPower = await aaveInstance.getPowerCurrent(user2.address, '1');
-
-    const user3VotingPower = await aaveInstance.getPowerCurrent(user3.address, '0');
-    const user3PropPower = await aaveInstance.getPowerCurrent(user3.address, '1');
-
-    const expectedUser2DelegatedVotingPower = '0';
-    const expectedUser2DelegatedPropPower = '0';
-
-    const expectedUser3DelegatedVotingPower = parseEther('2');
-    const expectedUser3DelegatedPropPower = parseEther('2');
-
-    expect(user2VotingPower.toString()).to.be.equal(
-      expectedUser2DelegatedVotingPower.toString(),
       'Invalid voting power for user 3'
     );
     expect(user2PropPower.toString()).to.be.equal(
@@ -431,146 +289,9 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
       expectedUser3DelegatedPropPower.toString(),
       'Invalid prop power for user 3'
     );
-    expect(await aaveInstance.isSnapshotted(users[1].address, '0')).to.be.equal(
-      false,
-      'User 1 Voting should not be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[1].address, '1')).to.be.equal(
-      false,
-      'User 1 Prop should not be snapshotted after'
-    );
-  });
-  it('SNAPSHOT STATE 1: User 2 delegate to zero, all snapshot should be off', async () => {
-    const {users} = testEnv;
-    const user1 = users[1];
-    const user2 = users[2];
-    const user3 = users[3];
-    revertId = await evmSnapshot();
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'User 3 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      true,
-      'User 3 Prop should be snapshotted before'
-    );
-
-    await aaveInstance.connect(user2.signer).delegate(ZERO_ADDRESS);
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      false,
-      'User 2 Voting should not be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      false,
-      'User 2 Prop should not be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      false,
-      'User 3 Voting should not be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      false,
-      'User 3 Prop should not be snapshotted after'
-    );
-  });
-  it('User 2 and 3 delegate themselves, all snapshot should be back on', async () => {
-    const {users} = testEnv;
-    const user1 = users[1];
-    const user2 = users[2];
-    const user3 = users[3];
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      false,
-      'User 2 Voting should not be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      false,
-      'User 2 Prop should not be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      false,
-      'User 3 Voting should not be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      false,
-      'User 3 Prop should not be snapshotted before'
-    );
-
-    await aaveInstance.connect(user2.signer).delegate(user2.address);
-    await aaveInstance.connect(user3.signer).delegate(user3.address);
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'User 3 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      true,
-      'User 3 Prop should be snapshotted after'
-    );
-  });
-  it('REVERT STATE 1: User 2 delegate back to themself, all snapshot on for itself, off for user 3', async () => {
-    const {users} = testEnv;
-    const user1 = users[1];
-    const user2 = users[2];
-    const user3 = users[3];
-    await evmRevert(revertId);
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      true,
-      'User 3 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      true,
-      'User 3 Prop should be snapshotted before'
-    );
-
-    await aaveInstance.connect(user2.signer).delegate(user2.address);
-
-    expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[2].address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '0')).to.be.equal(
-      false,
-      'User 3 Voting should not be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(users[3].address, '1')).to.be.equal(
-      false,
-      'User 3 Prop should not be snapshotted after'
-    );
   });
 
-  it('Checks the delegation at the block of the first action. Should be on for user2. Should be off for user3', async () => {
+  xit('Checks the delegation at the block of the first action', async () => {
     const {users} = testEnv;
 
     const user1 = users[1];
@@ -579,34 +300,34 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
     const user1VotingPower = await aaveInstance.getPowerAtBlock(
       user1.address,
-      firstActionBlockNumber,
+      firstActionBlockNumber - 3,
       '0'
     );
     const user1PropPower = await aaveInstance.getPowerAtBlock(
       user1.address,
-      firstActionBlockNumber,
+      firstActionBlockNumber - 3,
       '1'
     );
 
     const user2VotingPower = await aaveInstance.getPowerAtBlock(
       user2.address,
-      firstActionBlockNumber,
+      firstActionBlockNumber - 3,
       '0'
     );
     const user2PropPower = await aaveInstance.getPowerAtBlock(
       user2.address,
-      firstActionBlockNumber,
+      firstActionBlockNumber - 3,
       '1'
     );
 
     const user3VotingPower = await aaveInstance.getPowerAtBlock(
       user3.address,
-      firstActionBlockNumber,
+      firstActionBlockNumber - 1,
       '0'
     );
     const user3PropPower = await aaveInstance.getPowerAtBlock(
       user3.address,
-      firstActionBlockNumber,
+      firstActionBlockNumber - 1,
       '1'
     );
 
@@ -638,11 +359,11 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     );
 
     expect(user3VotingPower.toString()).to.be.equal(
-      '0',
+      expectedUser3DelegatedVotingPower,
       'Invalid voting power for user 3'
     );
     expect(user3PropPower.toString()).to.be.equal(
-      '0',
+      expectedUser3DelegatedPropPower,
       'Invalid prop power for user 3'
     );
   });
@@ -671,6 +392,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
       '1'
     );
     const propPowerCurrent = await aaveInstance.getPowerCurrent(user1.address, '1');
+
     expect(votingPowerAtPreviousBlock.toString()).to.be.equal(
       votingPowerCurrent.toString(),
       'Invalid voting power for user 1'
@@ -681,7 +403,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     );
   });
 
-  xit("Checks you can't fetch power at a block in the future", async () => {
+  it("Checks you can't fetch power at a block in the future", async () => {
     const {users} = testEnv;
 
     const user1 = users[1];
@@ -722,12 +444,12 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
   });
   it('User 1 delegates voting power to User 2 via signature', async () => {
     const {
-      users: [, user1, user2, user3],
+      users: [, user1, user2],
     } = testEnv;
 
     // Calculate expected voting power
     const user2VotPower = await aaveInstance.getPowerCurrent(user2.address, '1');
-    const expectedVotingPower = (await aaveInstance.balanceOf(user1.address)).add(
+    const expectedVotingPower = (await aaveInstance.getPowerCurrent(user1.address, '1')).add(
       user2VotPower
     );
 
@@ -757,48 +479,16 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
     const {v, r, s} = getSignatureFromTypedData(ownerPrivateKey, msgParams);
 
-    expect(await aaveInstance.isSnapshotted(user1.address, '0')).to.be.equal(
-      false,
-      'User 1 Voting should not be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(user1.address, '1')).to.be.equal(
-      false,
-      'User 1 Prop should not be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(user2.address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(user2.address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted before'
-    );
-
-
+    // Transmit message via delegateByTypeBySig
     const tx = await aaveInstance
-      .connect(user2.signer)
+      .connect(user1.signer)
       .delegateByTypeBySig(user2.address, '0', nonce, expiration, v, r, s);
-    //Check tx success and DelegateChanged
-    expect(await aaveInstance.isSnapshotted(user1.address, '1')).to.be.equal(
-      false,
-      'User 1 Prop should not be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(user1.address, '0')).to.be.equal(
-      true,
-      'User 1 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(user2.address, '0')).to.be.equal(
-      true,
-      'User 2 Voting should be snapshotted after'
-    );
-    expect(await aaveInstance.isSnapshotted(user2.address, '1')).to.be.equal(
-      true,
-      'User 2 Prop should be snapshotted after'
-    );
 
+    // Check tx success and DelegateChanged
     await expect(Promise.resolve(tx))
       .to.emit(aaveInstance, 'DelegateChanged')
       .withArgs(user1.address, user2.address, 0);
+
     // Check DelegatedPowerChanged event: users[1] power should drop to zero
     await expect(Promise.resolve(tx))
       .to.emit(aaveInstance, 'DelegatedPowerChanged')
@@ -825,17 +515,9 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
       users: [, user1, , user3],
     } = testEnv;
 
-    expect(await aaveInstance.isSnapshotted(user1.address, '1')).to.be.equal(
-      false,
-      'User 1 Prop should not be snapshotted before'
-    );
-    expect(await aaveInstance.isSnapshotted(user3.address, '1')).to.be.equal(
-      false,
-      'User 3 Prop should not be snapshotted before'
-    );
     // Calculate expected proposition power
-    const user3PropPower = await aaveInstance.balanceOf(user3.address );
-    const expectedPropPower = (await aaveInstance.balanceOf(user1.address)).add(
+    const user3PropPower = await aaveInstance.getPowerCurrent(user3.address, '1');
+    const expectedPropPower = (await aaveInstance.getPowerCurrent(user1.address, '1')).add(
       user3PropPower
     );
 
@@ -1212,7 +894,7 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     ).to.be.revertedWith('INVALID_EXPIRATION');
   });
 
-  xit('Checks the delegation at the block of the second saved action', async () => {
+  it('Checks the delegation at the block of the second saved action', async () => {
     const {users} = testEnv;
 
     const user1 = users[1];
@@ -1255,17 +937,11 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     const expectedUser1DelegatedVotingPower = '0';
     const expectedUser1DelegatedPropPower = '0';
 
-    const expectedUser2DelegatedVotingPower =
-      await aaveInstance.isSnapshotted(user2.address, '0') == false 
-        ? '0' : parseEther('1');
+    const expectedUser2DelegatedVotingPower = parseEther('1');
     const expectedUser2DelegatedPropPower = '0';
 
-    const expectedUser3DelegatedVotingPower = 
-      await aaveInstance.isSnapshotted(user3.address, '0') == false 
-        ? '0' : parseEther('2');
-    const expectedUser3DelegatedPropPower = 
-      await aaveInstance.isSnapshotted(user3.address, '0') == false 
-        ? '0' : parseEther('2');
+    const expectedUser3DelegatedVotingPower = parseEther('2');
+    const expectedUser3DelegatedPropPower = parseEther('3');
 
     expect(user1VotingPower.toString()).to.be.equal(
       expectedUser1DelegatedPropPower,

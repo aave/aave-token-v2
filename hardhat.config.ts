@@ -8,6 +8,8 @@ import 'hardhat-typechain';
 import 'solidity-coverage';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
+import 'hardhat-gas-reporter';
+
 import path from 'path';
 import fs from 'fs';
 

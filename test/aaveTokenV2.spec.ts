@@ -67,7 +67,7 @@ makeSuite('AAVE token V2', (testEnv: TestEnv) => {
   it('Checks the revision', async () => {
     const revision = await aaveTokenV2.REVISION();
 
-    expect(revision.toString()).to.be.equal('2', 'Invalid revision');
+    expect(revision.toString()).to.be.equal('3', 'Invalid revision');
   });
 
   it('Checks the allocation of the initial AAVE supply', async () => {
