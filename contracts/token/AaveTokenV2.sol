@@ -114,11 +114,11 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     address to,
     uint256 amount
   ) internal override {
-    require (to != address(type(uint).max), 'ILLEGAL_TRANSFER');
+    require(to != address(type(uint256).max), 'ILLEGAL_TRANSFER');
     address votingFromDelegatee = _getDelegatee(from, _votingDelegates);
     address votingToDelegatee = _getDelegatee(to, _votingDelegates);
     if (votingFromDelegatee != votingToDelegatee) {
-      if (votingFromDelegatee != address(type(uint).max)) {
+      if (votingFromDelegatee != address(type(uint256).max)) {
         bool tokenTransfersToGo = votingFromDelegatee == from;
         _moveOutDelegatesByType(
           votingFromDelegatee,
@@ -126,9 +126,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
           DelegationType.VOTING_POWER,
           tokenTransfersToGo
         );
-      } 
-      if (votingToDelegatee != address(type(uint).max))
-      {
+      }
+      if (votingToDelegatee != address(type(uint256).max)) {
         bool tokenTransferToCome = votingToDelegatee == to;
         _moveInDelegatesByType(
           votingToDelegatee,
@@ -141,7 +140,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     address propPowerFromDelegatee = _getDelegatee(from, _propositionPowerDelegates);
     address propPowerToDelegatee = _getDelegatee(to, _propositionPowerDelegates);
     if (propPowerFromDelegatee != propPowerToDelegatee) {
-      if (propPowerFromDelegatee != address(type(uint).max)) {
+      if (propPowerFromDelegatee != address(type(uint256).max)) {
         bool tokenTransfersToGo = propPowerFromDelegatee == from;
         _moveOutDelegatesByType(
           propPowerFromDelegatee,
@@ -149,9 +148,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
           DelegationType.PROPOSITION_POWER,
           tokenTransfersToGo
         );
-      } 
-      if (propPowerToDelegatee != address(type(uint).max))
-      {
+      }
+      if (propPowerToDelegatee != address(type(uint256).max)) {
         bool tokenTransferToCome = propPowerToDelegatee == to;
         _moveInDelegatesByType(
           propPowerToDelegatee,
@@ -258,34 +256,41 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     DelegationType delegationType,
     bool tokenTransfersToGo
   ) internal {
-
-    ( mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
+    (
+      mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
       mapping(address => uint256) storage snapshotsCounts,
       mapping(address => address) storage delegates
     ) = _getDelegationDataByType(delegationType);
 
     address fromDelegatee = delegates[from];
-    // fromDelegate can be 
+    // fromDelegate can be
     // - 0x00: snapshott off asap
     // - 0xFF: snapshot off
     // - itself: snapshot on forever
     // - other: snapshot on until I reset to myself (on) or 0x00 (off asap)
-    uint256 previousFrom = snapshotsCounts[from] != 0 && fromDelegatee != address(type(uint).max)
+    uint256 previousFrom = snapshotsCounts[from] != 0 && fromDelegatee != address(type(uint256).max)
       ? snapshots[from][snapshotsCounts[from] - 1].value
       : balanceOf(from);
 
-    if (!tokenTransfersToGo && fromDelegatee == address(type(uint).max) && amount > 0) {
+    if (!tokenTransfersToGo && fromDelegatee == address(type(uint256).max) && amount > 0) {
       delegates[from] = address(0);
       fromDelegatee = from;
-    } else if (tokenTransfersToGo && previousFrom == balanceOf(from) && fromDelegatee == address(0)) {
-      delegates[from] = address(type(uint).max);
-      fromDelegatee = address(type(uint).max);
-    } else if (!tokenTransfersToGo && previousFrom.sub(amount) == balanceOf(from) && fromDelegatee == address(0) && amount > 0) {
-      delegates[from] = address(type(uint).max);
-      fromDelegatee = address(type(uint).max);
+    } else if (
+      tokenTransfersToGo && previousFrom == balanceOf(from) && fromDelegatee == address(0)
+    ) {
+      delegates[from] = address(type(uint256).max);
+      fromDelegatee = address(type(uint256).max);
+    } else if (
+      !tokenTransfersToGo &&
+      previousFrom.sub(amount) == balanceOf(from) &&
+      fromDelegatee == address(0) &&
+      amount > 0
+    ) {
+      delegates[from] = address(type(uint256).max);
+      fromDelegatee = address(type(uint256).max);
     }
-    if (fromDelegatee != address(type(uint).max)){
-      if (fromDelegatee == address(0)){
+    if (fromDelegatee != address(type(uint256).max)) {
+      if (fromDelegatee == address(0)) {
         fromDelegatee = from;
       }
       _writeSnapshot(
@@ -311,35 +316,40 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     DelegationType delegationType,
     bool tokenTransferToCome
   ) internal {
-
-    ( mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
+    (
+      mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
       mapping(address => uint256) storage snapshotsCounts,
       mapping(address => address) storage delegates
     ) = _getDelegationDataByType(delegationType);
 
-    // toDelegatee can be 
+    // toDelegatee can be
     // - 0x00: snapshott off asap
     // - 0xFF: snapshot off
     // - itself: snapshot on forever
     // - other: snapshot on until I reset to myself (on) or 0x00 (off asap)
     address toDelegatee = delegates[to];
-    uint256 previousTo = snapshotsCounts[to] != 0 && toDelegatee != address(type(uint).max)
+    uint256 previousTo = snapshotsCounts[to] != 0 && toDelegatee != address(type(uint256).max)
       ? snapshots[to][snapshotsCounts[to] - 1].value
       : balanceOf(to);
 
     // enable snapshot if receiving power
-    if (!tokenTransferToCome && toDelegatee == address(type(uint).max) && amount > 0) {
+    if (!tokenTransferToCome && toDelegatee == address(type(uint256).max) && amount > 0) {
       delegates[to] = address(0);
       toDelegatee = to;
     } else if (tokenTransferToCome && previousTo == balanceOf(to) && toDelegatee == address(0)) {
-      delegates[to] = address(type(uint).max);
-      toDelegatee = address(type(uint).max);
-    } else if (!tokenTransferToCome && previousTo.add(amount) == balanceOf(to) && toDelegatee == address(0) && amount > 0) {
-      delegates[to] = address(type(uint).max);
-      toDelegatee = address(type(uint).max);
+      delegates[to] = address(type(uint256).max);
+      toDelegatee = address(type(uint256).max);
+    } else if (
+      !tokenTransferToCome &&
+      previousTo.add(amount) == balanceOf(to) &&
+      toDelegatee == address(0) &&
+      amount > 0
+    ) {
+      delegates[to] = address(type(uint256).max);
+      toDelegatee = address(type(uint256).max);
     }
-    if (toDelegatee != address(type(uint).max)){
-      if (toDelegatee == address(0)){
+    if (toDelegatee != address(type(uint256).max)) {
+      if (toDelegatee == address(0)) {
         toDelegatee = to;
       }
       _writeSnapshot(
@@ -388,18 +398,17 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     address delegatee,
     DelegationType delegationType
   ) internal override {
-    require(delegatee != address(type(uint).max), 'INVALID_DELEGATEE');
+    require(delegatee != address(type(uint256).max), 'INVALID_DELEGATEE');
 
     (, , mapping(address => address) storage delegates) = _getDelegationDataByType(delegationType);
 
     uint256 delegatorBalance = balanceOf(delegator);
     address previousDelegatee = _getDelegatee(delegator, delegates);
-    if (previousDelegatee == address(type(uint).max)) {
+    if (previousDelegatee == address(type(uint256).max)) {
       previousDelegatee = delegator;
     }
-    
 
-    if(delegates[delegator] == address(type(uint).max)){
+    if (delegates[delegator] == address(type(uint256).max)) {
       // not snapshotted => snapshot on asked by user
       _moveOutDelegatesByType(previousDelegatee, delegatorBalance, delegationType, false);
       delegates[delegator] = delegatee;
@@ -410,25 +419,20 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     }
 
     // if delegatee = 0x00, it means delegator wants snapshot off asap
-      // still need to get back its power
-      // if conditions are also met, he will be turned off
-    if (delegatee == address(0)){
+    // still need to get back its power
+    // if conditions are also met, he will be turned off
+    if (delegatee == address(0)) {
       _moveInDelegatesByType(delegator, delegatorBalance, delegationType, false);
     } else {
       _moveInDelegatesByType(delegatee, delegatorBalance, delegationType, false);
     }
-    
+
     emit DelegateChanged(delegator, delegatee, delegationType);
   }
 
-  function isSnapshotted(address user, DelegationType delegationType)
-    external
-    view
-    returns (bool)
-  {
-    (, , mapping(address => address) storage delegates) =
-      _getDelegationDataByType(delegationType);
-      return delegates[user] != address(type(uint).max);
+  function isSnapshotted(address user, DelegationType delegationType) external view returns (bool) {
+    (, , mapping(address => address) storage delegates) = _getDelegationDataByType(delegationType);
+    return delegates[user] != address(type(uint256).max);
   }
 
   /**
@@ -444,9 +448,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
       mapping(address => uint256) storage snapshotsCounts,
       mapping(address => address) storage delegates
-
     ) = _getDelegationDataByType(delegationType);
-    if (delegates[user] == address(type(uint).max)) {
+    if (delegates[user] == address(type(uint256).max)) {
       return 0;
     }
 
@@ -459,12 +462,13 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     view
     returns (uint256)
   {
-    ( mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
+    (
+      mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
       mapping(address => uint256) storage snapshotsCounts,
       mapping(address => address) storage delegates
     ) = _getDelegationDataByType(delegationType);
 
-    if (delegates[user] == address(type(uint).max)) {
+    if (delegates[user] == address(type(uint256).max)) {
       return 0;
     }
 

@@ -125,7 +125,9 @@ makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
     const priorPowerUserZeroAddress = await aaveInstance.getPowerCurrent(ZERO_ADDRESS, '0');
 
     await expect(
-      aaveInstance.connect(user.signer).delegateByType('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', '0')
+      aaveInstance
+        .connect(user.signer)
+        .delegateByType('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', '0')
     ).to.be.revertedWith('INVALID_DELEGATEE');
   });
 
