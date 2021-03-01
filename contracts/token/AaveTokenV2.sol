@@ -5,7 +5,6 @@ import {ERC20} from '../open-zeppelin/ERC20.sol';
 import {ITransferHook} from '../interfaces/ITransferHook.sol';
 import {VersionedInitializable} from '../utils/VersionedInitializable.sol';
 import {GovernancePowerDelegationERC20} from './base/GovernancePowerDelegationERC20.sol';
-// import {AaveTokenV2} from './AaveTokenV2.sol';
 import {SafeMath} from '../open-zeppelin/SafeMath.sol';
 
 /**
@@ -102,9 +101,12 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
 
   /**
    * @dev Writes a snapshot before any operation involving transfer of value: _transfer, _mint and _burn
-   * - On _transfer, it writes snapshots for both "from" and "to"
+   * - On _transfer, it writes snapshots to to and/or from, if one chose to participate in governance***
    * - On _mint, only for _to
    * - On _burn, only for _from
+   * *** participating in governance is acted by delegated power to oneself or someone else
+   * *** not participating in governance is default behavior (delegating to zero)
+   * *** to stop pariticpating in governance and toggle off snapshot, delegate to 0x00
    * @param from the from address
    * @param to the to address
    * @param amount the amount to transfer
@@ -245,10 +247,11 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   }
 
   /**
-   * @dev moves delegated power from one user to another
+   * @dev moves delegated power from one user. Call when delegating power or tranfering tokens.
    * @param from the user from which delegated power is moved
    * @param amount the amount of delegated power to be moved
    * @param delegationType the type of delegation (VOTING_POWER, PROPOSITION_POWER)
+   * @param tokenTransfersToGo true if tokens will be sent from this address at the same time
    **/
   function _moveOutDelegatesByType(
     address from,
@@ -262,12 +265,11 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       mapping(address => address) storage delegates
     ) = _getDelegationDataByType(delegationType);
 
-    address fromDelegatee = delegates[from];
     // fromDelegate can be
     // - 0x00: snapshott off asap
     // - 0xFF: snapshot off
-    // - itself: snapshot on forever
-    // - other: snapshot on until I reset to myself (on) or 0x00 (off asap)
+    // - itself or other: snapshot on until chose to reset to 0x00
+    address fromDelegatee = delegates[from];
     uint256 previousFrom = snapshotsCounts[from] != 0 && fromDelegatee != address(type(uint256).max)
       ? snapshots[from][snapshotsCounts[from] - 1].value
       : balanceOf(from);
@@ -279,6 +281,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       tokenTransfersToGo && previousFrom == balanceOf(from) && fromDelegatee == address(0)
     ) {
       delegates[from] = address(type(uint256).max);
+      snapshotsCounts[from] = 0;
       fromDelegatee = address(type(uint256).max);
     } else if (
       !tokenTransfersToGo &&
@@ -287,6 +290,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       amount > 0
     ) {
       delegates[from] = address(type(uint256).max);
+      snapshotsCounts[from] = 0;
       fromDelegatee = address(type(uint256).max);
     }
     if (fromDelegatee != address(type(uint256).max)) {
@@ -305,10 +309,11 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   }
 
   /**
-   * @dev moves delegated power from one user to another
+   * @dev moves delegated power to a user. Call when delegating power or tranfering tokens.
    * @param to the user that will receive the delegated power
    * @param amount the amount of delegated power to be moved
    * @param delegationType the type of delegation (VOTING_POWER, PROPOSITION_POWER)
+   * @param tokenTransferToCome true if tokens will be received from this address at the same time
    **/
   function _moveInDelegatesByType(
     address to,
@@ -325,8 +330,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     // toDelegatee can be
     // - 0x00: snapshott off asap
     // - 0xFF: snapshot off
-    // - itself: snapshot on forever
-    // - other: snapshot on until I reset to myself (on) or 0x00 (off asap)
+    // - itself or other: snapshot on until chose to reset to 0x00
     address toDelegatee = delegates[to];
     uint256 previousTo = snapshotsCounts[to] != 0 && toDelegatee != address(type(uint256).max)
       ? snapshots[to][snapshotsCounts[to] - 1].value
@@ -338,6 +342,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       toDelegatee = to;
     } else if (tokenTransferToCome && previousTo == balanceOf(to) && toDelegatee == address(0)) {
       delegates[to] = address(type(uint256).max);
+      snapshotsCounts[to] = 0;
       toDelegatee = address(type(uint256).max);
     } else if (
       !tokenTransferToCome &&
@@ -345,6 +350,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       toDelegatee == address(0) &&
       amount > 0
     ) {
+      snapshotsCounts[to] = 0;
       delegates[to] = address(type(uint256).max);
       toDelegatee = address(type(uint256).max);
     }
@@ -366,6 +372,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   /**
    * @dev returns the user delegatee. If a user never performed any delegation,
    * his delegated address will be 0x0. In that case we simply return the user itself
+   * If a user is out of governance, will return 0xFF
    * @param delegator the address of the user for which return the delegatee
    * @param delegates the array of delegates for a particular type of delegation
    **/
@@ -385,13 +392,13 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   }
 
   /**
-   * @dev delegates the specific power to a delegatee
+   * @dev delegates the specific power to a delegatee. Function used to opt in/out of governance***
    * @param delegatee the user which delegated power has changed
    * @param delegationType the type of delegation (VOTING_POWER, PROPOSITION_POWER)
-   * // delegatee can be 
-    // - 0x00: snapshot me off asap
-    // - itself: reset but snapshot on forever
-    // - other: snapshot on until I reset to myself (on) or 0x00 (off asap)
+   * *** participating in governance is acted by delegated power to oneself or someone else
+   * *** not participating in governance is default behavior (delegating to zero)
+   * *** to stop pariticpating in governance and toggle off snapshot, delegate to 0x00
+   * *** Opting out means reduced cost in token transfers
    **/
   function _delegateByType(
     address delegator,
@@ -404,27 +411,20 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
 
     uint256 delegatorBalance = balanceOf(delegator);
     address previousDelegatee = _getDelegatee(delegator, delegates);
+
     if (previousDelegatee == address(type(uint256).max)) {
       previousDelegatee = delegator;
     }
 
-    if (delegates[delegator] == address(type(uint256).max)) {
-      // not snapshotted => snapshot on asked by user
-      _moveOutDelegatesByType(previousDelegatee, delegatorBalance, delegationType, false);
-      delegates[delegator] = delegatee;
-      if (delegatee == delegator) return;
-    } else {
-      delegates[delegator] = delegatee;
-      _moveOutDelegatesByType(previousDelegatee, delegatorBalance, delegationType, false);
-    }
+    _moveOutDelegatesByType(previousDelegatee, delegatorBalance, delegationType, false);
 
-    // if delegatee = 0x00, it means delegator wants snapshot off asap
-    // still need to get back its power
-    // if conditions are also met, he will be turned off
     if (delegatee == address(0)) {
+      // if delegatee = 0x00, it means delegator wants snapshot off asap
+      delegates[delegator] = address(0);
       _moveInDelegatesByType(delegator, delegatorBalance, delegationType, false);
     } else {
       _moveInDelegatesByType(delegatee, delegatorBalance, delegationType, false);
+      delegates[delegator] = delegatee;
     }
 
     emit DelegateChanged(delegator, delegatee, delegationType);

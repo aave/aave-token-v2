@@ -19,7 +19,7 @@ import {parseEther} from 'ethers/lib/utils';
 
 chai.use(solidity);
 
-makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
+makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv: TestEnv) => {
   const {} = ProtocolErrors;
   let aaveInstance = {} as AaveTokenV2;
   let firstActionBlockNumber = 0;
@@ -43,9 +43,9 @@ makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
       .upgradeToAndCall(AAVEv2.address, encodedIntialize);
 
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
-    await aaveInstance.connect(users[1].signer).delegate(users[1].address);
-    await aaveInstance.connect(users[2].signer).delegate(users[2].address);
-    await aaveInstance.connect(users[3].signer).delegate(users[3].address);
+    await waitForTx(await aaveInstance.connect(users[1].signer).delegate(users[1].address));
+    await waitForTx(await aaveInstance.connect(users[2].signer).delegate(users[2].address));
+    await waitForTx(await aaveInstance.connect(users[3].signer).delegate(users[3].address));
   });
 
   // Blocked by https://github.com/nomiclabs/hardhat/issues/1081
@@ -136,7 +136,6 @@ makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
     const user1 = users[1];
     const user2 = users[2];
     const user3 = users[3];
-
     const lendBalance = parseEther('1000');
     const expectedAaveBalanceAfterMigration = parseEther('1');
 
@@ -293,7 +292,7 @@ makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
     );
   });
 
-  xit('Checks the delegation at the block of the first action', async () => {
+  it('Checks the delegation at the block of the first action', async () => {
     const {users} = testEnv;
 
     const user1 = users[1];
@@ -302,34 +301,34 @@ makeSuite('Delegation with snapshots always on', (testEnv: TestEnv) => {
 
     const user1VotingPower = await aaveInstance.getPowerAtBlock(
       user1.address,
-      firstActionBlockNumber - 3,
+      firstActionBlockNumber,
       '0'
     );
     const user1PropPower = await aaveInstance.getPowerAtBlock(
       user1.address,
-      firstActionBlockNumber - 3,
+      firstActionBlockNumber,
       '1'
     );
 
     const user2VotingPower = await aaveInstance.getPowerAtBlock(
       user2.address,
-      firstActionBlockNumber - 3,
+      firstActionBlockNumber,
       '0'
     );
     const user2PropPower = await aaveInstance.getPowerAtBlock(
       user2.address,
-      firstActionBlockNumber - 3,
+      firstActionBlockNumber,
       '1'
     );
 
     const user3VotingPower = await aaveInstance.getPowerAtBlock(
       user3.address,
-      firstActionBlockNumber - 1,
+      firstActionBlockNumber,
       '0'
     );
     const user3PropPower = await aaveInstance.getPowerAtBlock(
       user3.address,
-      firstActionBlockNumber - 1,
+      firstActionBlockNumber,
       '1'
     );
 

@@ -26,7 +26,7 @@ import {parseEther} from 'ethers/lib/utils';
 
 chai.use(solidity);
 
-makeSuite('Delegation', (testEnv: TestEnv) => {
+makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: TestEnv) => {
   const {} = ProtocolErrors;
   let aaveInstance = {} as AaveTokenV2;
   let firstActionBlockNumber = 0;
@@ -615,11 +615,11 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     const expectedUser1DelegatedVotingPower = '0';
     const expectedUser1DelegatedPropPower = '0';
 
-    const expectedUser2DelegatedVotingPower = parseEther('1');
+    const expectedUser2DelegatedVotingPower = '0';
     const expectedUser2DelegatedPropPower = '0';
 
     const expectedUser3DelegatedVotingPower = '0';
-    const expectedUser3DelegatedPropPower = parseEther('1');
+    const expectedUser3DelegatedPropPower = '0';
 
     expect(user1VotingPower.toString()).to.be.equal(
       expectedUser1DelegatedPropPower,
@@ -677,18 +677,18 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
     );
   });
 
-  xit("Checks you can't fetch power at a block in the future", async () => {
+  it("Checks you can't fetch power at a block in the future", async () => {
     const {users} = testEnv;
 
-    const user1 = users[1];
+    const user = users[6];
 
     const currentBlock = await getCurrentBlock();
 
     await expect(
-      aaveInstance.getPowerAtBlock(user1.address, currentBlock + 1, '0')
+      aaveInstance.getPowerAtBlock(user.address, currentBlock + 1, '0')
     ).to.be.revertedWith('INVALID_BLOCK_NUMBER');
     await expect(
-      aaveInstance.getPowerAtBlock(user1.address, currentBlock + 1, '1')
+      aaveInstance.getPowerAtBlock(user.address, currentBlock + 1, '1')
     ).to.be.revertedWith('INVALID_BLOCK_NUMBER');
   });
 
@@ -815,17 +815,35 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
 
   it('User 1 delegates proposition to User 3 via signature', async () => {
     const {
-      users: [, user1, , user3],
+      users: [, user1, user2, user3],
     } = testEnv;
+
+    expect(await aaveInstance.isSnapshotted(user2.address, '1')).to.be.equal(
+      true,
+      'User 2 Prop should be snapshotted before'
+    );
+    expect(await aaveInstance.isSnapshotted(user2.address, '0')).to.be.equal(
+      true,
+      'User 2 Vote should be snapshotted before'
+    );
 
     expect(await aaveInstance.isSnapshotted(user1.address, '1')).to.be.equal(
       false,
       'User 1 Prop should not be snapshotted before'
     );
+    expect(await aaveInstance.isSnapshotted(user1.address, '0')).to.be.equal(
+      true,
+      'User 1 Vote should not be snapshotted before'
+    );
     expect(await aaveInstance.isSnapshotted(user3.address, '1')).to.be.equal(
       false,
       'User 3 Prop should not be snapshotted before'
     );
+    expect(await aaveInstance.isSnapshotted(user3.address, '1')).to.be.equal(
+      false,
+      'User 3 Vote should not be snapshotted before'
+    );
+
     // Calculate expected proposition power
     const user3PropPower = await aaveInstance.balanceOf(user3.address);
     const expectedPropPower = (await aaveInstance.balanceOf(user1.address)).add(user3PropPower);
@@ -1304,14 +1322,12 @@ makeSuite('Delegation', (testEnv: TestEnv) => {
         .connect(user1.signer)
         .transfer(doubleTransferHelper.address, user1PriorBalance)
     );
-
     // Do double transfer
     await waitForTx(
       await doubleTransferHelper
         .connect(user1.signer)
         .doubleSend(receiver.address, user1PriorBalance.sub(parseEther('1')), parseEther('1'))
     );
-
     const receiverCurrentPower = await aaveInstance.getPowerCurrent(receiver.address, '0');
     const user1CurrentPower = await aaveInstance.getPowerCurrent(user1.address, '0');
 
