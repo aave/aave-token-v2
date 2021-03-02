@@ -15,6 +15,7 @@ import {MockTransferHook} from '../types/MockTransferHook';
 import {verifyContract} from './etherscan-verification';
 import {AaveToken} from '../types/AaveToken';
 import {AaveTokenV2} from '../types/AaveTokenV2';
+import {SelfdestructTransfer} from '../types/SelfdestructTransfer';
 import {LendToAaveMigrator} from '../types/LendToAaveMigrator';
 
 export const registerContractInJsonDb = async (contractId: string, contractInstance: Contract) => {
@@ -368,4 +369,11 @@ export const getSignatureFromTypedData = (
     data: typedData,
   });
   return fromRpcSig(signature);
+};
+
+export const deploySelfDestruct = async () => {
+  const id = eContractid.MockSelfDestruct;
+  const instance = await deployContract<SelfdestructTransfer>(id, []);
+  await instance.deployTransaction.wait();
+  return instance;
 };

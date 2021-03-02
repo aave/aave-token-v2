@@ -20,6 +20,17 @@ export const setDRE = (_DRE: HardhatRuntimeEnvironment) => {
   DRE = _DRE;
 };
 
+export const impersonateAccountsHardhat = async (accounts: string[]) => {
+  // eslint-disable-next-line no-restricted-syntax
+  for (const account of accounts) {
+    // eslint-disable-next-line no-await-in-loop
+    await DRE.network.provider.request({
+      method: 'hardhat_impersonateAccount',
+      params: [account],
+    });
+  }
+};
+
 export const getParamPerNetwork = <T>(
   {kovan, ropsten, main, hardhat, coverage}: iParamsPerNetwork<T>,
   network: eEthereumNetwork
@@ -62,3 +73,36 @@ export const advanceBlock = async (timestamp: number) =>
 
 export const increaseTime = async (secondsToIncrease: number) =>
   await DRE.ethers.provider.send('evm_increaseTime', [secondsToIncrease]);
+
+export const shuffle = (array: Array<string>): Array<string> => {
+  let currentIndex = array.length,
+    temporaryValue,
+    randomIndex;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+    // Pick a remaining element...
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex -= 1;
+
+    // And swap it with the current element.
+    temporaryValue = array[currentIndex];
+    array[currentIndex] = array[randomIndex];
+    array[randomIndex] = temporaryValue;
+  }
+
+  return array;
+};
+
+export const randomnizeAddress = (array: Array<string>, str: string): Array<string> => { 
+  let currentIndex = array.length - 1,
+    temporaryValue,
+    randomIndex;
+
+  // While there remain elements to shuffle...
+  while (0 !== currentIndex) {
+    array[currentIndex] = array[currentIndex].substr(0, 41).toLowerCase() + str;
+    currentIndex--;
+  }
+  return array;
+};

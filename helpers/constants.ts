@@ -11,6 +11,9 @@ export const MAX_UINT_AMOUNT =
   '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 export const MOCK_ETH_ADDRESS = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 export const WAD = Math.pow(10, 18).toString();
+export const AAVE_GOVERNANCE_V2 = '0xEC568fffba86c094cf06b22134B23074DFE2252c';
+export const LOONG_EXECUTOR = '0x61910ecd7e8e942136ce7fe7943f956cea1cc2f7';
+export const AAVE = '0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9';
 
 export const SUPPORTED_ETHERSCAN_NETWORKS = ['main', 'ropsten', 'kovan'];
 
