@@ -32,6 +32,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
   let firstActionBlockNumber = 0;
   let secondActionBlockNumber = 0;
   let revertId: string;
+  let revertInitId: string;
 
   it('Updates the implementation of the AAVE token to V2', async () => {
     const {aaveToken, users} = testEnv;
@@ -50,7 +51,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
       .connect(users[0].signer)
       .upgradeToAndCall(AAVEv2.address, encodedIntialize);
 
-    revertId = await evmSnapshot();
+    revertInitId = await evmSnapshot();
 
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
   });
@@ -1221,7 +1222,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     ).to.be.revertedWith('INVALID_EXPIRATION');
   });
 
-  xit('Checks the delegation at the block of the second saved action', async () => {
+  it('Checks the delegation at the block of the second saved action', async () => {
     const {users} = testEnv;
 
     const user1 = users[1];
@@ -1265,13 +1266,12 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     const expectedUser1DelegatedPropPower = '0';
 
     const expectedUser2DelegatedVotingPower =
-      (await aaveInstance.isSnapshotted(user2.address, '0')) == false ? '0' : parseEther('1');
-    const expectedUser2DelegatedPropPower = '0';
+      (await aaveInstance.isSnapshotted(user2.address, '0')) == false ? '0' : parseEther('2');
+    const expectedUser2DelegatedPropPower = parseEther('1.0');
 
-    const expectedUser3DelegatedVotingPower =
-      (await aaveInstance.isSnapshotted(user3.address, '0')) == false ? '0' : parseEther('2');
+    const expectedUser3DelegatedVotingPower = '0';
     const expectedUser3DelegatedPropPower =
-      (await aaveInstance.isSnapshotted(user3.address, '0')) == false ? '0' : parseEther('2');
+      (await aaveInstance.isSnapshotted(user3.address, '1')) == false ? '0' : parseEther('2');
 
     expect(user1VotingPower.toString()).to.be.equal(
       expectedUser1DelegatedPropPower,

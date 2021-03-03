@@ -449,7 +449,9 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       mapping(address => uint256) storage snapshotsCounts,
       mapping(address => address) storage delegates
     ) = _getDelegationDataByType(delegationType);
-    if (delegates[user] == address(type(uint256).max)) {
+    if (
+      delegates[user] == address(type(uint256).max) || snapshots[user][0].blockNumber > blockNumber
+    ) {
       return 0;
     }
 
