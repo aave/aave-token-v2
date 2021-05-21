@@ -270,7 +270,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     // - 0xFF: snapshot off
     // - itself or other: snapshot on until chose to reset to 0x00
     address fromDelegatee = delegates[from];
-    uint256 previousFrom = snapshotsCounts[from] != 0
+    uint256 previousPower = snapshotsCounts[from] != 0
       ? snapshots[from][snapshotsCounts[from] - 1].value
       : balanceOf(from);
 
@@ -278,14 +278,14 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
       delegates[from] = address(0);
       fromDelegatee = from;
     } else if (
-      tokenTransfersToGo && previousFrom == balanceOf(from) && fromDelegatee == address(0)
+      tokenTransfersToGo && previousPower == balanceOf(from) && fromDelegatee == address(0)
     ) {
       delegates[from] = address(type(uint256).max);
       snapshotsCounts[from] = 0;
       fromDelegatee = address(type(uint256).max);
     } else if (
       !tokenTransfersToGo &&
-      previousFrom.sub(amount) == balanceOf(from) &&
+      previousPower.sub(amount) == balanceOf(from) &&
       fromDelegatee == address(0) &&
       amount > 0
     ) {
@@ -298,10 +298,10 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
         snapshots,
         snapshotsCounts,
         from,
-        uint128(previousFrom),
-        uint128(previousFrom.sub(amount))
+        uint128(previousPower),
+        uint128(previousPower.sub(amount))
       );
-      emit DelegatedPowerChanged(from, previousFrom.sub(amount), delegationType);
+      emit DelegatedPowerChanged(from, previousPower.sub(amount), delegationType);
     }
   }
 
@@ -329,7 +329,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     // - 0xFF: snapshot off
     // - itself or other: snapshot on until chose to reset to 0x00
     address toDelegatee = delegates[to];
-    uint256 previousTo = snapshotsCounts[to] != 0
+    uint256 previousBalance = snapshotsCounts[to] != 0
       ? snapshots[to][snapshotsCounts[to] - 1].value
       : balanceOf(to);
 
@@ -337,13 +337,15 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     if (!tokenTransferToCome && toDelegatee == address(type(uint256).max) && amount > 0) {
       delegates[to] = address(0);
       toDelegatee = to;
-    } else if (tokenTransferToCome && previousTo == balanceOf(to) && toDelegatee == address(0)) {
+    } else if (
+      tokenTransferToCome && previousBalance == balanceOf(to) && toDelegatee == address(0)
+    ) {
       delegates[to] = address(type(uint256).max);
       snapshotsCounts[to] = 0;
       toDelegatee = address(type(uint256).max);
     } else if (
       !tokenTransferToCome &&
-      previousTo.add(amount) == balanceOf(to) &&
+      previousBalance.add(amount) == balanceOf(to) &&
       toDelegatee == address(0) &&
       amount > 0
     ) {
@@ -356,10 +358,10 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
         snapshots,
         snapshotsCounts,
         to,
-        uint128(previousTo),
-        uint128(previousTo.add(amount))
+        uint128(previousBalance),
+        uint128(previousBalance.add(amount))
       );
-      emit DelegatedPowerChanged(to, previousTo.add(amount), delegationType);
+      emit DelegatedPowerChanged(to, previousBalance.add(amount), delegationType);
     }
   }
 
