@@ -411,13 +411,12 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
 
     _moveOutDelegatesByType(previousDelegatee, delegatorBalance, delegationType, false);
 
+    delegates[delegator] = delegatee;
     if (delegatee == address(0)) {
       // if delegatee = 0x00, it means delegator wants snapshot off asap
-      delegates[delegator] = address(0);
       _moveInDelegatesByType(delegator, delegatorBalance, delegationType, false);
     } else {
       _moveInDelegatesByType(delegatee, delegatorBalance, delegationType, false);
-      delegates[delegator] = delegatee;
     }
 
     emit DelegateChanged(delegator, delegatee, delegationType);
