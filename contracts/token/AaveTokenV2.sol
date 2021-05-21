@@ -23,9 +23,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   /// @dev owner => next valid nonce to submit with permit()
   mapping(address => uint256) public _nonces;
 
-  mapping(address => mapping(uint256 => Snapshot)) public _votingSnapshots;
-
-  mapping(address => uint256) public _votingSnapshotsCounts;
+  mapping(address => mapping(uint256 => Snapshot)) public _votingPowerSnapshots;
+  mapping(address => uint256) public _votingPowerSnapshotsCounts;
 
   /// @dev reference to the Aave governance contract to call (if initialized) on _beforeTokenTransfer
   /// !!! IMPORTANT The Aave governance is considered a trustable contract, being its responsibility
@@ -39,12 +38,11 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   bytes32 public constant PERMIT_TYPEHASH =
     keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
 
-  mapping(address => address) internal _votingDelegates;
+  mapping(address => address) public _votingPowerDelegates;
 
-  mapping(address => mapping(uint256 => Snapshot)) internal _propositionPowerSnapshots;
-  mapping(address => uint256) internal _propositionPowerSnapshotsCounts;
-
-  mapping(address => address) internal _propositionPowerDelegates;
+  mapping(address => mapping(uint256 => Snapshot)) public _propositionPowerSnapshots;
+  mapping(address => uint256) public _propositionPowerSnapshotsCounts;
+  mapping(address => address) public _propositionPowerDelegates;
 
   constructor() public ERC20(NAME, SYMBOL) {}
 
@@ -116,22 +114,22 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     uint256 amount
   ) internal override {
     require(to != address(type(uint256).max), 'ILLEGAL_TRANSFER');
-    address votingFromDelegatee = _getDelegatee(from, _votingDelegates);
-    address votingToDelegatee = _getDelegatee(to, _votingDelegates);
-    if (votingFromDelegatee != votingToDelegatee) {
-      if (votingFromDelegatee != address(type(uint256).max)) {
-        bool tokenTransfersToGo = votingFromDelegatee == from;
+    address votingPowerFromDelegatee = _getDelegatee(from, _votingPowerDelegates);
+    address votingPowerToDelegatee = _getDelegatee(to, _votingPowerDelegates);
+    if (votingPowerFromDelegatee != votingPowerToDelegatee) {
+      if (votingPowerFromDelegatee != address(type(uint256).max)) {
+        bool tokenTransfersToGo = votingPowerFromDelegatee == from;
         _moveOutDelegatesByType(
-          votingFromDelegatee,
+          votingPowerFromDelegatee,
           amount,
           DelegationType.VOTING_POWER,
           tokenTransfersToGo
         );
       }
-      if (votingToDelegatee != address(type(uint256).max)) {
-        bool tokenTransferToCome = votingToDelegatee == to;
+      if (votingPowerToDelegatee != address(type(uint256).max)) {
+        bool tokenTransferToCome = votingPowerToDelegatee == to;
         _moveInDelegatesByType(
-          votingToDelegatee,
+          votingPowerToDelegatee,
           amount,
           DelegationType.VOTING_POWER,
           tokenTransferToCome
@@ -178,7 +176,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     )
   {
     if (delegationType == DelegationType.VOTING_POWER) {
-      return (_votingSnapshots, _votingSnapshotsCounts, _votingDelegates);
+      return (_votingPowerSnapshots, _votingPowerSnapshotsCounts, _votingPowerDelegates);
     } else {
       return (
         _propositionPowerSnapshots,
