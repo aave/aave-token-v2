@@ -22,13 +22,14 @@ import {
   getContract,
   deploySelfDestruct,
 } from '../../helpers/contracts-helpers';
-import {AaveTokenV2} from '../types/AaveTokenV2';
+import {AAVE, LONG_EXECUTOR} from '../../helpers/constants';
 import {MAX_UINT_AMOUNT, ZERO_ADDRESS, AAVE, LOONG_EXECUTOR} from '../../helpers/constants';
 import {parseEther} from 'ethers/lib/utils';
+import { AaveTokenV2 } from '../../types/AaveTokenV2';
 
 chai.use(solidity);
 
-makeSuite('Benchmark', (testEnv: TestEnv) => {
+makeSuite('Benchmark (@fork-mode)', (testEnv: TestEnv) => {
   const {} = ProtocolErrors;
   let aaveInstance = {} as AaveTokenV2;
   let firstActionBlockNumber = 0;
