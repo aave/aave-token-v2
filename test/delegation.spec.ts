@@ -22,7 +22,7 @@ import {
   getEvmNetwork,
 } from '../helpers/contracts-helpers';
 import {AaveTokenV2} from '../types/AaveTokenV2';
-import {MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
+import {FF_ADDRESS, MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
 import {parseEther} from 'ethers/lib/utils';
 import { EvmNetwork } from '../types/EvmNetwork';
 
@@ -35,7 +35,6 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
   let firstActionBlockNumber = 0;
   let secondActionBlockNumber = 0;
   let revertId: string;
-  let revertInitId: string;
 
   it('Updates the implementation of the AAVE token to V2', async () => {
     const {aaveToken, users} = testEnv;
@@ -49,13 +48,11 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
 
     const AAVEv2 = await deployAaveTokenV2();
 
-    const encodedIntialize = AAVEv2.interface.encodeFunctionData('initialize');
+    const encodedInitialize = AAVEv2.interface.encodeFunctionData('initialize');
 
     await aaveTokenProxy
       .connect(users[0].signer)
-      .upgradeToAndCall(AAVEv2.address, encodedIntialize);
-
-    revertInitId = await evmSnapshot();
+      .upgradeToAndCall(AAVEv2.address, encodedInitialize);
 
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
   });
@@ -80,7 +77,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     expect(delegatee.toString()).to.be.equal(ZERO_ADDRESS);
   });
 
-  it('User 1 tries to delegate voting power to user 2', async () => {
+  it('User 1 delegates voting power to user 2', async () => {
     const {users} = testEnv;
 
     await aaveInstance.connect(users[1].signer).delegateByType(users[2].address, '0');
@@ -92,7 +89,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     expect(await aaveInstance.isSnapshotted(users[2].address, '0')).to.be.equal(true);
   });
 
-  it('User 1 tries to delegate proposition power to user 3', async () => {
+  it('User 1 delegates proposition power to user 3', async () => {
     const {users} = testEnv;
 
     await aaveInstance.connect(users[1].signer).delegateByType(users[3].address, '1');
@@ -135,14 +132,10 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     await lendToken.connect(user.signer).approve(lendToAaveMigrator.address, lendBalance);
     await lendToAaveMigrator.connect(user.signer).migrateFromLEND(lendBalance);
 
-    // Track current power
-    const priorPowerUser = await aaveInstance.getPowerCurrent(user.address, '0');
-    const priorPowerUserZeroAddress = await aaveInstance.getPowerCurrent(ZERO_ADDRESS, '0');
-
     await expect(
       aaveInstance
         .connect(user.signer)
-        .delegateByType('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', '0')
+        .delegateByType(FF_ADDRESS, '0')
     ).to.be.revertedWith('INVALID_DELEGATEE');
   });
 
@@ -352,7 +345,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     expect(user2PropPower.toString()).to.be.equal('0', 'Invalid prop power for user 2');
   });
 
-  it('User 1 delegated to themself, remove voting and prop power to user 2 and 3, snaphot still on', async () => {
+  it('User 1 delegated to itself, remove voting and prop power to user 2 and 3, snapshot still on', async () => {
     const {users} = testEnv;
     const user1 = users[1];
     const user2 = users[2];
@@ -400,7 +393,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     );
     await evmRevert(revertId);
   });
-  it('User 1 delegated to 0x00, remove voting and prop power to user 2 and 3, snaphot off', async () => {
+  it('User 1 delegated to 0x00, remove voting and prop power to user 2 and 3, snapshot off', async () => {
     const {users} = testEnv;
     const user1 = users[1];
     const user2 = users[2];
@@ -533,7 +526,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
       'User 3 Prop should be snapshotted after'
     );
   });
-  it('REVERT STATE 1: User 2 delegate back to themself, all snapshot on for itself, off for user 3', async () => {
+  it('REVERT STATE 1: User 2 delegate back to itself, all snapshot on for itself, off for user 3', async () => {
     const {users} = testEnv;
     const user1 = users[1];
     const user2 = users[2];
@@ -908,7 +901,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     const user3PropositionPower = await aaveInstance.getPowerCurrent(user3.address, '1');
     expect(user3PropositionPower).to.be.equal(
       expectedPropPower,
-      'Delegatee should have propostion power from user 1'
+      'Delegatee should have proposition power from user 1'
     );
 
     // Save current block
@@ -1015,12 +1008,12 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     const user4PropositionPower = await aaveInstance.getPowerCurrent(user4.address, '1');
     expect(user4PropositionPower).to.be.equal(
       expectedPropPower,
-      'Delegatee should have propostion power from user 2'
+      'Delegatee should have proposition power from user 2'
     );
     const user4VotingPower = await aaveInstance.getPowerCurrent(user4.address, '0');
     expect(user4VotingPower).to.be.equal(
       user4ExpectedVotPower,
-      'Delegatee should have votinh power from user 2'
+      'Delegatee should have voting power from user 2'
     );
 
     const user2PropositionPower = await aaveInstance.getPowerCurrent(user2.address, '1');
@@ -1341,7 +1334,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     );
     expect(user1CurrentPower).to.be.equal(
       '0',
-      'User1 power should be zero due transfered all the funds'
+      'User1 power should be zero due transferred all the funds'
     );
   });
 });

@@ -1,29 +1,20 @@
 import chai, {expect} from 'chai';
-import {fail} from 'assert';
 import {solidity} from 'ethereum-waffle';
 import {TestEnv, makeSuite} from './../helpers/make-suite';
 import {ProtocolErrors, eContractid} from '../../helpers/types';
 import {
   DRE,
-  advanceBlock,
-  timeLatest,
   waitForTx,
-  evmRevert,
-  evmSnapshot,
   impersonateAccountsHardhat,
   shuffle,
-  randomnizeAddress,
+  randomizeAddress,
 } from '../../helpers/misc-utils';
 import {
-  buildDelegateParams,
-  buildDelegateByTypeParams,
   deployAaveTokenV2,
-  deployDoubleTransferHelper,
   getContract,
   deploySelfDestruct,
 } from '../../helpers/contracts-helpers';
 import {AAVE, LONG_EXECUTOR} from '../../helpers/constants';
-import {MAX_UINT_AMOUNT, ZERO_ADDRESS, AAVE, LOONG_EXECUTOR} from '../../helpers/constants';
 import {parseEther} from 'ethers/lib/utils';
 import { AaveTokenV2 } from '../../types/AaveTokenV2';
 
@@ -44,9 +35,9 @@ makeSuite('Benchmark (@fork-mode)', (testEnv: TestEnv) => {
       eContractid.InitializableAdminUpgradeabilityProxy,
       AAVE
     );
-    impersonateAccountsHardhat([LOONG_EXECUTOR]);
+    impersonateAccountsHardhat([LONG_EXECUTOR]);
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
-    const executorSigner = DRE.ethers.provider.getSigner(LOONG_EXECUTOR);
+    const executorSigner = DRE.ethers.provider.getSigner(LONG_EXECUTOR);
     const AAVEv2 = await deployAaveTokenV2();
     const filter = aaveInstance.filters.Transfer(null, null, null);
     const transfers = await aaveInstance.queryFilter(
@@ -72,11 +63,11 @@ makeSuite('Benchmark (@fork-mode)', (testEnv: TestEnv) => {
     await impersonateAccountsHardhat([...holders]);
     let signer;
     const shuffled = shuffle(holders.map((x) => x));
-    const oftenEmptyAddresses = randomnizeAddress(
+    const oftenEmptyAddresses = randomizeAddress(
       holders.map((x) => x),
       '2'
     );
-    const oftenEmptyAddresses2 = randomnizeAddress(
+    const oftenEmptyAddresses2 = randomizeAddress(
       holders.map((x) => x),
       '3'
     );
@@ -107,12 +98,12 @@ makeSuite('Benchmark (@fork-mode)', (testEnv: TestEnv) => {
       countV2TransfersBetweenHolderAndEmpty++;
     }
 
-    const encodedIntialize = AAVEv2.interface.encodeFunctionData('initialize');
+    const encodedInitialize = AAVEv2.interface.encodeFunctionData('initialize');
     const SelfDestructContract = await deploySelfDestruct();
     await waitForTx(
-      await SelfDestructContract.destroyAndTransfer(LOONG_EXECUTOR, {value: parseEther('10')})
+      await SelfDestructContract.destroyAndTransfer(LONG_EXECUTOR, {value: parseEther('10')})
     );
-    await aaveTokenProxy.connect(executorSigner).upgradeToAndCall(AAVEv2.address, encodedIntialize);
+    await aaveTokenProxy.connect(executorSigner).upgradeToAndCall(AAVEv2.address, encodedInitialize);
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
     expect((await aaveInstance.REVISION()).toString()).to.be.equal('3');
 
@@ -159,7 +150,7 @@ makeSuite('Benchmark (@fork-mode)', (testEnv: TestEnv) => {
     - Total Gas : ${gasV25TransfersBetweenHolderAndEmpty}
     - Tx Number: ${countV25TransfersBetweenHolderAndEmpty}
     - Average: ${gasV25TransfersBetweenHolderAndEmpty / countV25TransfersBetweenHolderAndEmpty}
-------------- V2.5 SNAPSHOTS ON (BY OPTIN DELEGATION) -------------
+------------- V2.5 SNAPSHOTS ON (BY OPT-IN DELEGATION) -------------
   ** Transfers Between Holders:
     - Total Gas : ${gasV25TransfersBetweenHoldersDel}
     - Tx Number: ${countV25TransfersBetweenHoldersDel}

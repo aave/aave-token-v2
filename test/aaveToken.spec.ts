@@ -13,7 +13,6 @@ import {
 } from '../helpers/contracts-helpers';
 import {
   getAaveTokenDomainSeparatorPerNetwork,
-  BUIDLEREVM_CHAINID,
   ZERO_ADDRESS,
   MAX_UINT_AMOUNT,
 } from '../helpers/constants';
@@ -54,7 +53,7 @@ makeSuite('AAVE token', (testEnv: TestEnv) => {
 
   it('Checks the allocation of the initial AAVE supply', async () => {
     const expectedMigratorBalance = new BigNumber(13000000).times(new BigNumber(10).pow(18));
-    const expectedlDistributorBalance = new BigNumber(3000000).times(new BigNumber(10).pow(18));
+    const expectedDistributorBalance = new BigNumber(3000000).times(new BigNumber(10).pow(18));
     const {aaveToken, lendToAaveMigrator} = testEnv;
     const migratorBalance = await aaveToken.balanceOf(lendToAaveMigrator.address);
     const distributorBalance = await aaveToken.balanceOf(testEnv.users[0].address);
@@ -64,7 +63,7 @@ makeSuite('AAVE token', (testEnv: TestEnv) => {
       'Invalid migrator balance'
     );
     expect(distributorBalance.toString()).to.be.equal(
-      expectedlDistributorBalance.toFixed(0),
+      expectedDistributorBalance.toFixed(0),
       'Invalid migrator balance'
     );
   });
