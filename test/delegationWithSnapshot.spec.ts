@@ -12,21 +12,25 @@ import {
   getContract,
   getCurrentBlock,
   getSignatureFromTypedData,
+  getEvmNetwork,
 } from '../helpers/contracts-helpers';
 import {AaveTokenV2} from '../types/AaveTokenV2';
 import {MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
 import {parseEther} from 'ethers/lib/utils';
+import { EvmNetwork } from '../types/EvmNetwork';
 
 chai.use(solidity);
 
 makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv: TestEnv) => {
   const {} = ProtocolErrors;
   let aaveInstance = {} as AaveTokenV2;
+  let evmNetwork = {} as EvmNetwork;
   let firstActionBlockNumber = 0;
   let secondActionBlockNumber = 0;
 
   it('Updates the implementation of the AAVE token to V2', async () => {
     const {aaveToken, users} = testEnv;
+    evmNetwork = await getEvmNetwork();
 
     //getting the proxy contract from the aave token address
     const aaveTokenProxy = await getContract(
@@ -148,7 +152,7 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     const lendBalanceAfterMigration = await lendToken.balanceOf(user1.address);
     const aaveBalanceAfterMigration = await aaveInstance.balanceOf(user1.address);
 
-    firstActionBlockNumber = await getCurrentBlock();
+    firstActionBlockNumber = (await evmNetwork.getBlockNumber()).toNumber();
 
     const user1PropPower = await aaveInstance.getPowerCurrent(user1.address, '0');
     const user1VotingPower = await aaveInstance.getPowerCurrent(user1.address, '1');
@@ -581,7 +585,7 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     );
 
     // Save current block
-    secondActionBlockNumber = await getCurrentBlock();
+    secondActionBlockNumber = (await evmNetwork.getBlockNumber()).toNumber();
   });
 
   it('User 2 delegates all to User 4 via signature', async () => {
