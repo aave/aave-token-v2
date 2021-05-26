@@ -130,9 +130,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     await lendToAaveMigrator.connect(user.signer).migrateFromLEND(lendBalance);
 
     await expect(
-      aaveInstance
-        .connect(user.signer)
-        .delegateByType(FF_ADDRESS, '0')
+      aaveInstance.connect(user.signer).delegateByType(FF_ADDRESS, '0')
     ).to.be.revertedWith('INVALID_DELEGATEE');
   });
 
@@ -166,7 +164,6 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
 
     const lendBalanceAfterMigration = await lendToken.balanceOf(user1.address);
     const aaveBalanceAfterMigration = await aaveInstance.balanceOf(user1.address);
-
 
     // Hardhat issue workaround (https://github.com/nomiclabs/hardhat/issues/1247)
     // Update provider to get the current blockNumber
@@ -1365,7 +1362,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     await lendToAaveMigrator.connect(user5.signer).migrateFromLEND(lendBalance);
 
     await aaveInstance.connect(user5.signer).transfer(user6.address, parseEther('2'));
-    
+
     expect(await aaveInstance.isSnapshotted(user5.address, '0')).to.be.equal(
       false,
       'user 5 voting should be snapshotted'
@@ -1407,9 +1404,9 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     const user6 = users[6];
 
     await aaveInstance.connect(user6.signer).delegate(user6.address);
-    
+
     await aaveInstance.connect(user6.signer).transfer(user5.address, parseEther('1'));
-    
+
     expect(await aaveInstance.isSnapshotted(user5.address, '0')).to.be.equal(
       false,
       'user 5 voting should be snapshotted'
@@ -1445,7 +1442,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     );
   });
 
-  it.skip('User 4 delegates to 5; User 6 transfers token to 4', async () => {
+  it('User 4 delegates to 5; User 6 transfers token to 4', async () => {
     /**
      * Edge case: User 6 first delegates to 4 with 0 power, second receives
      * tokens. The power should be passed to User 6, leaving User 4's power the same.
@@ -1454,7 +1451,7 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     const user4 = users[4];
     const user5 = users[5];
     const user6 = users[6];
-  
+
     await aaveInstance.connect(user4.signer).delegate(user5.address);
 
     await aaveInstance.connect(user6.signer).transfer(user4.address, parseEther('1'));

@@ -17,7 +17,7 @@
     "compile:force": "npm run compile -- --force",
     "compile:force:quiet": "npm run compile:force -- --quiet",
     "types-gen": "hardhat typechain",
-    "test": "npm run compile:force:quiet && TS_NODE_TRANSPILE_ONLY=1 hardhat test test/__setup.spec.ts test/aaveToken.spec.ts test/aaveTokenV2.spec.ts test/delegationWithSnapshot.spec.ts test/delegation.spec.ts test/migrator.spec.ts",
+    "test": "npm run compile:force:quiet && TS_NODE_TRANSPILE_ONLY=1 hardhat test test/__setup.spec.ts test/aaveToken.spec.ts test/aaveTokenV2.spec.ts test/delegationWithSnapshot.spec.ts test/delegation.spec.ts test/migrator.spec.ts test/tokenSnapshot.spec.ts",
     "test:delegation": "hardhat test test/__setup.spec.ts test/delegation.spec.ts",
     "test:benchmark": "TS_NODE_TRANSPILE_ONLY=1 MAINNET_FORK=true hardhat test test/__setup.spec.ts test/benchmark/benchmark-transfers.spec.ts",
     "coverage": "SKIP_LOAD=true npx hardhat typechain && node --max_old_space_size=6144 node_modules/.bin/hardhat coverage",
