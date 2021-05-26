@@ -8,7 +8,6 @@ import BigNumber from 'bignumber.js';
 import {Ierc20Detailed} from '../types/Ierc20Detailed';
 import {InitializableAdminUpgradeabilityProxy} from '../types/InitializableAdminUpgradeabilityProxy';
 import {MintableErc20} from '../types/MintableErc20';
-import {EvmNetwork} from '../types/EvmNetwork';
 import {signTypedData_v4, TypedData} from 'eth-sig-util';
 import {fromRpcSig, ECDSASignature} from 'ethereumjs-util';
 import {DoubleTransferHelper} from '../types/DoubleTransferHelper';
@@ -114,9 +113,6 @@ export const deployLendToAaveMigrator = async (
   return instance;
 };
 
-export const deployEvmNetwork = async () =>
-  await deployContract<EvmNetwork>(eContractid.EvmNetwork, []);
-
 export const deployMintableErc20 = async ([name, symbol, decimals]: [string, string, number]) =>
   await deployContract<MintableErc20>(eContractid.MintableErc20, [name, symbol, decimals]);
 
@@ -182,14 +178,6 @@ export const getLendToAaveMigrator = async (address?: tEthereumAddress) => {
     eContractid.LendToAaveMigrator,
     address ||
       (await getDb().get(`${eContractid.LendToAaveMigrator}.${DRE.network.name}`).value()).address
-  );
-};
-
-export const getEvmNetwork = async (address?: tEthereumAddress) => {
-  return await getContract<EvmNetwork>(
-    eContractid.EvmNetwork,
-    address ||
-      (await getDb().get(`${eContractid.EvmNetwork}.${DRE.network.name}`).value()).address
   );
 };
 

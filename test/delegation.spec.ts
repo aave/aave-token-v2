@@ -19,26 +19,23 @@ import {
   getContract,
   getCurrentBlock,
   getSignatureFromTypedData,
-  getEvmNetwork,
 } from '../helpers/contracts-helpers';
 import {AaveTokenV2} from '../types/AaveTokenV2';
 import {FF_ADDRESS, MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
 import {parseEther} from 'ethers/lib/utils';
-import { EvmNetwork } from '../types/EvmNetwork';
+import hardhat, {ethers} from 'hardhat';
 
 chai.use(solidity);
 
 makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: TestEnv) => {
   const {} = ProtocolErrors;
   let aaveInstance = {} as AaveTokenV2;
-  let evmNetwork = {} as EvmNetwork;
   let firstActionBlockNumber = 0;
   let secondActionBlockNumber = 0;
   let revertId: string;
 
   it('Updates the implementation of the AAVE token to V2', async () => {
     const {aaveToken, users} = testEnv;
-    evmNetwork = await getEvmNetwork();
 
     //getting the proxy contract from the aave token address
     const aaveTokenProxy = await getContract(
@@ -170,7 +167,11 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
     const lendBalanceAfterMigration = await lendToken.balanceOf(user1.address);
     const aaveBalanceAfterMigration = await aaveInstance.balanceOf(user1.address);
 
-    firstActionBlockNumber = (await evmNetwork.getBlockNumber()).toNumber();
+
+    // Hardhat issue workaround (https://github.com/nomiclabs/hardhat/issues/1247)
+    // Update provider to get the current blockNumber
+    const updatedProvider = new ethers.providers.Web3Provider(hardhat.network.provider as any);
+    firstActionBlockNumber = await updatedProvider.getBlockNumber();
 
     const user1PropPower = await aaveInstance.getPowerCurrent(user1.address, '0');
     const user1VotingPower = await aaveInstance.getPowerCurrent(user1.address, '1');
@@ -915,8 +916,11 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
       'Delegatee should have proposition power from user 1'
     );
 
+    // Hardhat issue workaround (https://github.com/nomiclabs/hardhat/issues/1247)
+    // Update provider to get the current blockNumber
+    const updatedProvider = new ethers.providers.Web3Provider(hardhat.network.provider as any);
     // Save current block
-    secondActionBlockNumber = (await evmNetwork.getBlockNumber()).toNumber();
+    secondActionBlockNumber = await updatedProvider.getBlockNumber();
   });
 
   it('User 2 delegates all to User 4 via signature', async () => {

@@ -9,7 +9,6 @@ import {
   insertContractAddressInDb,
   registerContractInJsonDb,
   deployMockTransferHook,
-  deployEvmNetwork,
 } from '../helpers/contracts-helpers';
 
 import path from 'path';
@@ -48,8 +47,6 @@ const buildTestEnv = async (deployer: Signer, secondaryWallet: Signer) => {
 
   const mockTransferHook = await deployMockTransferHook();
 
-  const evmNetwork = await deployEvmNetwork();
-
   const aaveTokenEncodedInitialize = aaveTokenImpl.interface.encodeFunctionData('initialize', [
     lendToAaveMigratorProxy.address,
     aaveAdmin,
@@ -79,8 +76,6 @@ const buildTestEnv = async (deployer: Signer, secondaryWallet: Signer) => {
 
   await insertContractAddressInDb(eContractid.MintableErc20, mockLendToken.address);
 
-  await insertContractAddressInDb(eContractid.EvmNetwork, evmNetwork.address);
-  
   await insertContractAddressInDb(eContractid.MockTransferHook, mockTransferHook.address);
 
   await insertContractAddressInDb(

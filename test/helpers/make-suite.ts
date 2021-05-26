@@ -7,7 +7,6 @@ import {
   getLendToAaveMigrator,
   getLendToAaveMigratorImpl,
   getMockTransferHook,
-  getEvmNetwork,
 } from '../../helpers/contracts-helpers';
 import {tEthereumAddress} from '../../helpers/types';
 
@@ -18,7 +17,6 @@ import {AaveToken} from '../../types/AaveToken';
 import {LendToAaveMigrator} from '../../types/LendToAaveMigrator';
 import {MintableErc20} from '../../types/MintableErc20';
 import {MockTransferHook} from '../../types/MockTransferHook';
-import { EvmNetwork } from '../../types/EvmNetwork';
 
 chai.use(bignumberChai());
 
@@ -34,7 +32,6 @@ export interface TestEnv {
   lendToAaveMigrator: LendToAaveMigrator;
   lendToAaveMigratorImpl: LendToAaveMigrator;
   mockTransferHook: MockTransferHook;
-  evmNetwork: EvmNetwork;
 }
 
 let buidlerevmSnapshotId: string = '0x1';
@@ -52,7 +49,6 @@ const testEnv: TestEnv = {
   lendToAaveMigrator: {} as LendToAaveMigrator,
   lendToAaveMigratorImpl: {} as LendToAaveMigrator,
   mockTransferHook: {} as MockTransferHook,
-  evmNetwork: {} as EvmNetwork,
 } as TestEnv;
 
 export async function initializeMakeSuite() {
@@ -74,7 +70,6 @@ export async function initializeMakeSuite() {
   testEnv.lendToken = await getLendToken();
   testEnv.lendToAaveMigratorImpl = await getLendToAaveMigratorImpl();
   testEnv.mockTransferHook = await getMockTransferHook();
-  testEnv.evmNetwork = await getEvmNetwork();
 }
 
 export function makeSuite(name: string, tests: (testEnv: TestEnv) => void) {

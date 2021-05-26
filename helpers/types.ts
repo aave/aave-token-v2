@@ -9,7 +9,6 @@ export enum eContractid {
   IERC20Detailed = 'IERC20Detailed',
   AdminUpgradeabilityProxy = 'AdminUpgradeabilityProxy',
   InitializableAdminUpgradeabilityProxy = 'InitializableAdminUpgradeabilityProxy',
-  EvmNetwork = 'EvmNetwork',
   MintableErc20 = 'MintableErc20',
   LendToAaveMigratorImpl = 'LendToAaveMigratorImpl',
   DoubleTransferHelper = 'DoubleTransferHelper',
