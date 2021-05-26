@@ -110,7 +110,7 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
       .upgradeToAndCall(lendToAaveMigratorImpl.address, lendToAaveMigratorInitializeEncoded);
   });
 
-  it('User1 tries to delegate voting power to 0XFF_ADDRESS', async () => {
+  it('User1 tries to delegate voting power to FF_ADDRESS', async () => {
     const {
       users: [, , , , , user],
       lendToken,
