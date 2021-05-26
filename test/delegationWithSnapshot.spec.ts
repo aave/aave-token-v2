@@ -135,6 +135,17 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     ).to.be.revertedWith('INVALID_DELEGATEE');
   });
 
+  it('User 1 tries to send tokens to FF_ADDRESS', async () => {
+    const {
+      users: [, , , , , user],
+      users,
+    } = testEnv;
+
+    await expect(aaveInstance.connect(user.signer).transfer(FF_ADDRESS, '0')).to.be.revertedWith(
+      'ILLEGAL_TRANSFER'
+    );
+  });
+
   it('User 1 migrates 1000 LEND; checks voting and proposition power of user 2 and 3', async () => {
     const {lendToAaveMigrator, lendToken, users} = testEnv;
     const user1 = users[1];
