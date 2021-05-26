@@ -1348,4 +1348,161 @@ makeSuite('Delegation with by default snapshot off (new test suite)', (testEnv: 
       'User1 power should be zero due transferred all the funds'
     );
   });
+
+  it('User 5 transfers tokens to 6 (with FF as delegatee)', async () => {
+    const {lendToAaveMigrator, lendToken, users} = testEnv;
+    const user5 = users[5];
+    const user6 = users[6];
+
+    const lendBalance = parseEther('2000');
+    await lendToken.connect(user5.signer).mint(lendBalance);
+    await lendToken.connect(user5.signer).approve(lendToAaveMigrator.address, lendBalance);
+
+    await lendToAaveMigrator.connect(user5.signer).migrateFromLEND(lendBalance);
+
+    await aaveInstance.connect(user5.signer).transfer(user6.address, parseEther('2'));
+    
+    expect(await aaveInstance.isSnapshotted(user5.address, '0')).to.be.equal(
+      false,
+      'user 5 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user5.address, '1')).to.be.equal(
+      false,
+      'user 5 prop should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user6.address, '0')).to.be.equal(
+      false,
+      'user 6 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user6.address, '1')).to.be.equal(
+      false,
+      'user 6 prop should be snapshotted'
+    );
+
+    expect(await aaveInstance.getPowerCurrent(user5.address, '0')).to.be.equal(
+      '0',
+      'Invalid prop power for user 5'
+    );
+    expect(await aaveInstance.getPowerCurrent(user5.address, '1')).to.be.equal(
+      '0',
+      'Invalid voting power for user 5'
+    );
+    expect(await aaveInstance.getPowerCurrent(user6.address, '0')).to.be.equal(
+      '0',
+      'Invalid prop power for user 6'
+    );
+    expect(await aaveInstance.getPowerCurrent(user6.address, '1')).to.be.equal(
+      '0',
+      'Invalid voting power for user 6'
+    );
+  });
+
+  it('User 6 delegates to itself and transfers token to 5 (with FF as delegatee)', async () => {
+    const {users} = testEnv;
+    const user5 = users[5];
+    const user6 = users[6];
+
+    await aaveInstance.connect(user6.signer).delegate(user6.address);
+    
+    await aaveInstance.connect(user6.signer).transfer(user5.address, parseEther('1'));
+    
+    expect(await aaveInstance.isSnapshotted(user5.address, '0')).to.be.equal(
+      false,
+      'user 5 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user5.address, '1')).to.be.equal(
+      false,
+      'user 5 prop should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user6.address, '0')).to.be.equal(
+      true,
+      'user 6 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user6.address, '1')).to.be.equal(
+      true,
+      'user 6 prop should be snapshotted'
+    );
+
+    expect(await aaveInstance.getPowerCurrent(user5.address, '0')).to.be.equal(
+      '0',
+      'Invalid prop power for user 5'
+    );
+    expect(await aaveInstance.getPowerCurrent(user5.address, '1')).to.be.equal(
+      '0',
+      'Invalid voting power for user 5'
+    );
+    expect(await aaveInstance.getPowerCurrent(user6.address, '0')).to.be.equal(
+      parseEther('1'),
+      'Invalid prop power for user 6'
+    );
+    expect(await aaveInstance.getPowerCurrent(user6.address, '1')).to.be.equal(
+      parseEther('1'),
+      'Invalid voting power for user 6'
+    );
+  });
+
+  it.skip('User 4 delegates to 5; User 6 transfers token to 4', async () => {
+    /**
+     * Edge case: User 6 first delegates to 4 with 0 power, second receives
+     * tokens. The power should be passed to User 6, leaving User 4's power the same.
+     */
+    const {users} = testEnv;
+    const user4 = users[4];
+    const user5 = users[5];
+    const user6 = users[6];
+  
+    await aaveInstance.connect(user4.signer).delegate(user5.address);
+
+    await aaveInstance.connect(user6.signer).transfer(user4.address, parseEther('1'));
+
+    expect(await aaveInstance.isSnapshotted(user4.address, '0')).to.be.equal(
+      true,
+      'user 4 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user4.address, '1')).to.be.equal(
+      true,
+      'user 4 prop should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user5.address, '0')).to.be.equal(
+      true,
+      'user 5 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user5.address, '1')).to.be.equal(
+      true,
+      'user 5 prop should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user6.address, '0')).to.be.equal(
+      true,
+      'user 6 voting should be snapshotted'
+    );
+    expect(await aaveInstance.isSnapshotted(user6.address, '1')).to.be.equal(
+      true,
+      'user 6 prop should be snapshotted'
+    );
+
+    expect(await aaveInstance.getPowerCurrent(user4.address, '0')).to.be.equal(
+      '0',
+      'Invalid prop power for user 4'
+    );
+    expect(await aaveInstance.getPowerCurrent(user4.address, '1')).to.be.equal(
+      '0',
+      'Invalid voting power for user 4'
+    );
+    expect(await aaveInstance.getPowerCurrent(user5.address, '0')).to.be.equal(
+      parseEther('3'),
+      'Invalid prop power for user 5'
+    );
+    expect(await aaveInstance.getPowerCurrent(user5.address, '1')).to.be.equal(
+      parseEther('3'),
+      'Invalid voting power for user 5'
+    );
+    expect(await aaveInstance.getPowerCurrent(user6.address, '0')).to.be.equal(
+      '0',
+      'Invalid prop power for user 6'
+    );
+    expect(await aaveInstance.getPowerCurrent(user6.address, '1')).to.be.equal(
+      '0',
+      'Invalid voting power for user 6'
+    );
+  });
 });
