@@ -15,6 +15,7 @@ import {MockTransferHook} from '../types/MockTransferHook';
 import {verifyContract} from './etherscan-verification';
 import {AaveToken} from '../types/AaveToken';
 import {AaveTokenV2} from '../types/AaveTokenV2';
+import {SelfdestructTransfer} from '../types/SelfdestructTransfer';
 import {LendToAaveMigrator} from '../types/LendToAaveMigrator';
 
 export const registerContractInJsonDb = async (contractId: string, contractInstance: Contract) => {
@@ -52,9 +53,8 @@ export const getEthersSigners = async (): Promise<Signer[]> =>
 export const getEthersSignersAddresses = async (): Promise<tEthereumAddress[]> =>
   await Promise.all((await DRE.ethers.getSigners()).map((signer) => signer.getAddress()));
 
-export const getCurrentBlock = async () => {
-  return DRE.ethers.provider.getBlockNumber();
-};
+export const getCurrentBlock = async () =>
+  parseInt((await DRE.ethers.provider.send('eth_getBlockByNumber', ['latest', false])).number);
 
 export const decodeAbiNumber = (data: string): number =>
   parseInt(utils.defaultAbiCoder.decode(['uint256'], data).toString());
@@ -368,4 +368,11 @@ export const getSignatureFromTypedData = (
     data: typedData,
   });
   return fromRpcSig(signature);
+};
+
+export const deploySelfDestruct = async () => {
+  const id = eContractid.MockSelfDestruct;
+  const instance = await deployContract<SelfdestructTransfer>(id, []);
+  await instance.deployTransaction.wait();
+  return instance;
 };

@@ -13,6 +13,7 @@ export enum eContractid {
   LendToAaveMigratorImpl = 'LendToAaveMigratorImpl',
   DoubleTransferHelper = 'DoubleTransferHelper',
   MockTransferHook = 'MockTransferHook',
+  MockSelfDestruct = 'SelfdestructTransfer',
 }
 
 export enum ProtocolErrors {}

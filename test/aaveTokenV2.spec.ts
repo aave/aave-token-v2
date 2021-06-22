@@ -2,14 +2,13 @@ import {fail} from 'assert';
 import {ethers} from 'ethers';
 import BigNumber from 'bignumber.js';
 import {TestEnv, makeSuite} from './helpers/make-suite';
-import {eContractid, ProtocolErrors} from '../helpers/types';
+import {eContractid} from '../helpers/types';
 import {eEthereumNetwork} from '../helpers/types-common';
 import {waitForTx, DRE} from '../helpers/misc-utils';
 import {
   getInitializableAdminUpgradeabilityProxy,
   buildPermitParams,
   getSignatureFromTypedData,
-  deployDoubleTransferHelper,
   deployAaveTokenV2,
   getContract,
 } from '../helpers/contracts-helpers';
@@ -37,11 +36,11 @@ makeSuite('AAVE token V2', (testEnv: TestEnv) => {
 
     const AAVEv2 = await deployAaveTokenV2();
 
-    const encodedIntialize = AAVEv2.interface.encodeFunctionData('initialize');
+    const encodedInitialize = AAVEv2.interface.encodeFunctionData('initialize');
 
     await aaveTokenProxy
       .connect(users[0].signer)
-      .upgradeToAndCall(AAVEv2.address, encodedIntialize);
+      .upgradeToAndCall(AAVEv2.address, encodedInitialize);
 
     aaveTokenV2 = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
   });
@@ -67,12 +66,12 @@ makeSuite('AAVE token V2', (testEnv: TestEnv) => {
   it('Checks the revision', async () => {
     const revision = await aaveTokenV2.REVISION();
 
-    expect(revision.toString()).to.be.equal('2', 'Invalid revision');
+    expect(revision.toString()).to.be.equal('3', 'Invalid revision');
   });
 
   it('Checks the allocation of the initial AAVE supply', async () => {
     const expectedMigratorBalance = new BigNumber(13000000).times(new BigNumber(10).pow(18));
-    const expectedlDistributorBalance = new BigNumber(3000000).times(new BigNumber(10).pow(18));
+    const expectedDistributorBalance = new BigNumber(3000000).times(new BigNumber(10).pow(18));
     const {lendToAaveMigrator} = testEnv;
     const migratorBalance = await aaveTokenV2.balanceOf(lendToAaveMigrator.address);
     const distributorBalance = await aaveTokenV2.balanceOf(testEnv.users[0].address);
@@ -82,7 +81,7 @@ makeSuite('AAVE token V2', (testEnv: TestEnv) => {
       'Invalid migrator balance'
     );
     expect(distributorBalance.toString()).to.be.equal(
-      expectedlDistributorBalance.toFixed(0),
+      expectedDistributorBalance.toFixed(0),
       'Invalid migrator balance'
     );
   });

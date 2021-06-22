@@ -33,7 +33,11 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
    * @param delegatee the user which delegated power has changed
    * @param delegationType the type of delegation (VOTING_POWER, PROPOSITION_POWER)
    **/
-  function delegateByType(address delegatee, DelegationType delegationType) external override {
+  function delegateByType(address delegatee, DelegationType delegationType)
+    external
+    virtual
+    override
+  {
     _delegateByType(msg.sender, delegatee, delegationType);
   }
 
@@ -58,7 +62,9 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
   {
     (, , mapping(address => address) storage delegates) = _getDelegationDataByType(delegationType);
 
-    return _getDelegatee(delegator, delegates);
+    address delegatee = _getDelegatee(delegator, delegates);
+
+    return delegatee == address(type(uint256).max) ? delegator : delegatee;
   }
 
   /**
@@ -68,6 +74,7 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
    **/
   function getPowerCurrent(address user, DelegationType delegationType)
     external
+    virtual
     override
     view
     returns (uint256)
@@ -89,7 +96,7 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
     address user,
     uint256 blockNumber,
     DelegationType delegationType
-  ) external override view returns (uint256) {
+  ) external virtual override view returns (uint256) {
     (
       mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
       mapping(address => uint256) storage snapshotsCounts,
@@ -118,7 +125,7 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
     address delegator,
     address delegatee,
     DelegationType delegationType
-  ) internal {
+  ) internal virtual {
     require(delegatee != address(0), 'INVALID_DELEGATEE');
 
     (, , mapping(address => address) storage delegates) = _getDelegationDataByType(delegationType);
@@ -145,7 +152,7 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
     address to,
     uint256 amount,
     DelegationType delegationType
-  ) internal {
+  ) internal virtual {
     if (from == to) {
       return;
     }
@@ -299,6 +306,7 @@ abstract contract GovernancePowerDelegationERC20 is ERC20, IGovernancePowerDeleg
    **/
   function _getDelegatee(address delegator, mapping(address => address) storage delegates)
     internal
+    virtual
     view
     returns (address)
   {
