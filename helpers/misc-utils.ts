@@ -94,7 +94,7 @@ export const shuffle = (array: Array<string>): Array<string> => {
   return array;
 };
 
-export const randomnizeAddress = (array: Array<string>, str: string): Array<string> => { 
+export const randomizeAddress = (array: Array<string>, str: string): Array<string> => { 
   let currentIndex = array.length - 1,
     temporaryValue,
     randomIndex;

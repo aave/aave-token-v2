@@ -14,8 +14,9 @@ import {
   getSignatureFromTypedData,
 } from '../helpers/contracts-helpers';
 import {AaveTokenV2} from '../types/AaveTokenV2';
-import {MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
+import {FF_ADDRESS, MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
 import {parseEther} from 'ethers/lib/utils';
+import hardhat, {ethers} from 'hardhat';
 
 chai.use(solidity);
 
@@ -36,11 +37,11 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
 
     const AAVEv2 = await deployAaveTokenV2();
 
-    const encodedIntialize = AAVEv2.interface.encodeFunctionData('initialize');
+    const encodedInitialize = AAVEv2.interface.encodeFunctionData('initialize');
 
     await aaveTokenProxy
       .connect(users[0].signer)
-      .upgradeToAndCall(AAVEv2.address, encodedIntialize);
+      .upgradeToAndCall(AAVEv2.address, encodedInitialize);
 
     aaveInstance = await getContract(eContractid.AaveTokenV2, aaveTokenProxy.address);
     await waitForTx(await aaveInstance.connect(users[1].signer).delegate(users[1].address));
@@ -106,7 +107,7 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
       .upgradeToAndCall(lendToAaveMigratorImpl.address, lendToAaveMigratorInitializeEncoded);
   });
 
-  it('User1 tries to delegate voting power to 0XFF_ADDRESS', async () => {
+  it('User1 tries to delegate voting power to FF_ADDRESS', async () => {
     const {
       users: [, , , , , user],
       lendToken,
@@ -127,8 +128,19 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     await expect(
       aaveInstance
         .connect(user.signer)
-        .delegateByType('0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF', '0')
+        .delegateByType(FF_ADDRESS, '0')
     ).to.be.revertedWith('INVALID_DELEGATEE');
+  });
+
+  it('User 1 tries to send tokens to FF_ADDRESS', async () => {
+    const {
+      users: [, , , , , user],
+      users,
+    } = testEnv;
+
+    await expect(aaveInstance.connect(user.signer).transfer(FF_ADDRESS, '0')).to.be.revertedWith(
+      'ILLEGAL_TRANSFER'
+    );
   });
 
   it('User 1 migrates 1000 LEND; checks voting and proposition power of user 2 and 3', async () => {
@@ -148,7 +160,10 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     const lendBalanceAfterMigration = await lendToken.balanceOf(user1.address);
     const aaveBalanceAfterMigration = await aaveInstance.balanceOf(user1.address);
 
-    firstActionBlockNumber = await getCurrentBlock();
+    // Hardhat issue workaround (https://github.com/nomiclabs/hardhat/issues/1247)
+    // Update provider to get the current blockNumber
+    const updatedProvider = new ethers.providers.Web3Provider(hardhat.network.provider as any);
+    firstActionBlockNumber = await updatedProvider.getBlockNumber();
 
     const user1PropPower = await aaveInstance.getPowerCurrent(user1.address, '0');
     const user1VotingPower = await aaveInstance.getPowerCurrent(user1.address, '1');
@@ -577,11 +592,14 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     const user3PropositionPower = await aaveInstance.getPowerCurrent(user3.address, '1');
     expect(user3PropositionPower).to.be.equal(
       expectedPropPower,
-      'Delegatee should have propostion power from user 1'
+      'Delegatee should have proposition power from user 1'
     );
 
+    // Hardhat issue workaround (https://github.com/nomiclabs/hardhat/issues/1247)
+    // Update provider to get the current blockNumber
+    const updatedProvider = new ethers.providers.Web3Provider(hardhat.network.provider as any);
     // Save current block
-    secondActionBlockNumber = await getCurrentBlock();
+    secondActionBlockNumber = await updatedProvider.getBlockNumber();
   });
 
   it('User 2 delegates all to User 4 via signature', async () => {
@@ -684,12 +702,12 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     const user4PropositionPower = await aaveInstance.getPowerCurrent(user4.address, '1');
     expect(user4PropositionPower).to.be.equal(
       expectedPropPower,
-      'Delegatee should have propostion power from user 2'
+      'Delegatee should have proposition power from user 2'
     );
     const user4VotingPower = await aaveInstance.getPowerCurrent(user4.address, '0');
     expect(user4VotingPower).to.be.equal(
       user4ExpectedVotPower,
-      'Delegatee should have votinh power from user 2'
+      'Delegatee should have voting power from user 2'
     );
 
     const user2PropositionPower = await aaveInstance.getPowerCurrent(user2.address, '1');
@@ -1010,7 +1028,7 @@ makeSuite('Delegation test with Snapshots always on (old test suite)', (testEnv:
     );
     expect(user1CurrentPower).to.be.equal(
       '0',
-      'User1 power should be zero due transfered all the funds'
+      'User1 power should be zero due transferred all the funds'
     );
   });
 });

@@ -33,10 +33,12 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
 
   bytes32 public DOMAIN_SEPARATOR;
   bytes public constant EIP712_REVISION = bytes('1');
-  bytes32 internal constant EIP712_DOMAIN =
-    keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)');
-  bytes32 public constant PERMIT_TYPEHASH =
-    keccak256('Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)');
+  bytes32 internal constant EIP712_DOMAIN = keccak256(
+    'EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'
+  );
+  bytes32 public constant PERMIT_TYPEHASH = keccak256(
+    'Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)'
+  );
 
   mapping(address => address) public _votingPowerDelegates;
 
@@ -75,14 +77,13 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     //solium-disable-next-line
     require(block.timestamp <= deadline, 'INVALID_EXPIRATION');
     uint256 currentValidNonce = _nonces[owner];
-    bytes32 digest =
-      keccak256(
-        abi.encodePacked(
-          '\x19\x01',
-          DOMAIN_SEPARATOR,
-          keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, currentValidNonce, deadline))
-        )
-      );
+    bytes32 digest = keccak256(
+      abi.encodePacked(
+        '\x19\x01',
+        DOMAIN_SEPARATOR,
+        keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, currentValidNonce, deadline))
+      )
+    );
 
     require(owner == ecrecover(digest, v, r, s), 'INVALID_SIGNATURE');
     _nonces[owner] = currentValidNonce.add(1);
@@ -92,7 +93,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
   /**
    * @dev returns the revision of the implementation contract
    */
-  function getRevision() internal pure override returns (uint256) {
+  function getRevision() internal override pure returns (uint256) {
     return REVISION;
   }
 
@@ -167,8 +168,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
 
   function _getDelegationDataByType(DelegationType delegationType)
     internal
-    view
     override
+    view
     returns (
       mapping(address => mapping(uint256 => Snapshot)) storage, //snapshots
       mapping(address => uint256) storage, //snapshots count
@@ -205,10 +206,9 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     bytes32 r,
     bytes32 s
   ) public {
-    bytes32 structHash =
-      keccak256(
-        abi.encode(DELEGATE_BY_TYPE_TYPEHASH, delegatee, uint256(delegationType), nonce, expiry)
-      );
+    bytes32 structHash = keccak256(
+      abi.encode(DELEGATE_BY_TYPE_TYPEHASH, delegatee, uint256(delegationType), nonce, expiry)
+    );
     bytes32 digest = keccak256(abi.encodePacked('\x19\x01', DOMAIN_SEPARATOR, structHash));
     address signatory = ecrecover(digest, v, r, s);
     require(signatory != address(0), 'INVALID_SIGNATURE');
@@ -268,22 +268,23 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     // - 0xFF: snapshot off
     // - itself or other: snapshot on until chose to reset to 0x00
     address fromDelegatee = delegates[from];
-    uint256 previousPower =
-      snapshotsCounts[from] != 0
-        ? snapshots[from][snapshotsCounts[from] - 1].value
-        : balanceOf(from);
+    uint256 previousPower = snapshotsCounts[from] != 0
+      ? snapshots[from][snapshotsCounts[from] - 1].value
+      : balanceOf(from);
 
     // enable snapshot if receiving power
-    if (!tokenTransfersToGo && amount > 0) {
+    if (!tokenTransfersToGo) {
       if (fromDelegatee == address(type(uint256).max)) {
         delegates[from] = address(0);
         fromDelegatee = from;
-      } else if (fromDelegatee == address(0) && previousPower.sub(amount) == balanceOf(from)) {
+      } else if (
+        fromDelegatee == address(0) && previousPower.sub(amount) == balanceOf(from) && amount > 0
+      ) {
         snapshotsCounts[from] = 0;
         delegates[from] = address(type(uint256).max);
         fromDelegatee = address(type(uint256).max);
       }
-    } else if (tokenTransfersToGo) {
+    } else {
       if (fromDelegatee == address(0) && previousPower == balanceOf(from)) {
         delegates[from] = address(type(uint256).max);
         snapshotsCounts[from] = 0;
@@ -327,8 +328,9 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     // - 0xFF: snapshot off
     // - itself or other: snapshot on until chose to reset to 0x00
     address toDelegatee = delegates[to];
-    uint256 previousPower =
-      snapshotsCounts[to] != 0 ? snapshots[to][snapshotsCounts[to] - 1].value : balanceOf(to);
+    uint256 previousPower = snapshotsCounts[to] != 0
+      ? snapshots[to][snapshotsCounts[to] - 1].value
+      : balanceOf(to);
 
     // enable snapshot if receiving power
     if (!tokenTransferToCome && amount > 0) {
@@ -369,8 +371,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
    **/
   function _getDelegatee(address delegator, mapping(address => address) storage delegates)
     internal
-    view
     override
+    view
     returns (address)
   {
     address previousDelegatee = delegates[delegator];
@@ -433,7 +435,7 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
     address user,
     uint256 blockNumber,
     DelegationType delegationType
-  ) external view override returns (uint256) {
+  ) external override view returns (uint256) {
     (
       mapping(address => mapping(uint256 => Snapshot)) storage snapshots,
       mapping(address => uint256) storage snapshotsCounts,
@@ -450,8 +452,8 @@ contract AaveTokenV2 is GovernancePowerDelegationERC20, VersionedInitializable {
 
   function getPowerCurrent(address user, DelegationType delegationType)
     external
-    view
     override
+    view
     returns (uint256)
   {
     (

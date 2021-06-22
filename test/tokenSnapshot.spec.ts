@@ -1,8 +1,8 @@
-import chai, { expect } from 'chai';
-import { fail } from 'assert';
-import { solidity } from 'ethereum-waffle';
-import { TestEnv, makeSuite, SignerWithAddress } from './helpers/make-suite';
-import { ProtocolErrors, eContractid } from '../helpers/types';
+import chai, {expect} from 'chai';
+import {fail} from 'assert';
+import {solidity} from 'ethereum-waffle';
+import {TestEnv, makeSuite, SignerWithAddress} from './helpers/make-suite';
+import {ProtocolErrors, eContractid} from '../helpers/types';
 import {
   DRE,
   advanceBlock,
@@ -20,16 +20,16 @@ import {
   getCurrentBlock,
   getSignatureFromTypedData,
 } from '../helpers/contracts-helpers';
-import { AaveTokenV2 } from '../types/AaveTokenV2';
-import { MAX_UINT_AMOUNT, ZERO_ADDRESS } from '../helpers/constants';
-import { formatEther, parseEther, _toEscapedUtf8String } from 'ethers/lib/utils';
-import { ITransferHook, UpgradeabilityProxy } from './types';
-import { InitializableAdminUpgradeabilityProxy } from '../types/InitializableAdminUpgradeabilityProxy';
-import { Signer } from 'crypto';
-import { isRegExp } from 'util';
-import { BigNumber } from 'ethers';
-import { zeroAddress } from 'ethereumjs-util';
-import { DEFAULT_ECDH_CURVE } from 'tls';
+import {AaveTokenV2} from '../types/AaveTokenV2';
+import {MAX_UINT_AMOUNT, ZERO_ADDRESS} from '../helpers/constants';
+import {formatEther, parseEther, _toEscapedUtf8String} from 'ethers/lib/utils';
+import {ITransferHook, UpgradeabilityProxy} from './types';
+import {InitializableAdminUpgradeabilityProxy} from '../types/InitializableAdminUpgradeabilityProxy';
+import {Signer} from 'crypto';
+import {isRegExp} from 'util';
+import {BigNumber} from 'ethers';
+import {zeroAddress} from 'ethereumjs-util';
+import {DEFAULT_ECDH_CURVE} from 'tls';
 
 chai.use(solidity);
 
@@ -38,7 +38,7 @@ enum DelegationType {
   PROPOSITION_POWER,
 }
 
-makeSuite('Lasse testing token snapshots', async (testEnv: TestEnv) => {
+makeSuite('Testing token snapshots fuzz like approach', async (testEnv: TestEnv) => {
   const lendAmount = parseEther('100000');
   const aaveAmount = lendAmount.div(1000);
   const {} = ProtocolErrors;
@@ -55,10 +55,11 @@ makeSuite('Lasse testing token snapshots', async (testEnv: TestEnv) => {
   let snapFundedV2: string;
 
   it('Starts the migration', async () => {
-    const { lendToAaveMigrator, lendToAaveMigratorImpl } = testEnv;
+    const {lendToAaveMigrator, lendToAaveMigratorImpl} = testEnv;
 
-    const lendToAaveMigratorInitializeEncoded =
-      lendToAaveMigratorImpl.interface.encodeFunctionData('initialize');
+    const lendToAaveMigratorInitializeEncoded = lendToAaveMigratorImpl.interface.encodeFunctionData(
+      'initialize'
+    );
 
     const migratorAsProxy = await getContract(
       eContractid.InitializableAdminUpgradeabilityProxy,
@@ -71,7 +72,7 @@ makeSuite('Lasse testing token snapshots', async (testEnv: TestEnv) => {
   });
 
   it('Mint tokens to users!', async () => {
-    const { lendToAaveMigrator, users, aaveToken, lendToken } = testEnv;
+    const {lendToAaveMigrator, users, aaveToken, lendToken} = testEnv;
 
     Alice = users[1];
     Bob = users[2];
@@ -92,7 +93,7 @@ makeSuite('Lasse testing token snapshots', async (testEnv: TestEnv) => {
   });
 
   it('Update the implementation of the AAVE token to V2', async () => {
-    const { aaveToken, users, deployer } = testEnv;
+    const {aaveToken, users, deployer} = testEnv;
 
     //getting the proxy contract from the aave token address
     const aaveTokenProxy = await getContract(
@@ -661,8 +662,8 @@ makeSuite('Lasse testing token snapshots', async (testEnv: TestEnv) => {
       balances: BigNumber[],
       offset = 1
     ) => {
-      const power: { [key: string]: BigNumber } = {};
-      const maybePower: { [key: string]: BigNumber } = {};
+      const power: {[key: string]: BigNumber} = {};
+      const maybePower: {[key: string]: BigNumber} = {};
       for (let i = 0; i < 4; i++) {
         const userAddress = delegateTo[i + offset];
         power[userAddress] = BigNumber.from(0);
@@ -677,7 +678,7 @@ makeSuite('Lasse testing token snapshots', async (testEnv: TestEnv) => {
           maybePower[delegatee] = maybePower[delegatee].add(balances[i]);
         }
       }
-      const totPower: { [key: string]: BigNumber } = {};
+      const totPower: {[key: string]: BigNumber} = {};
       for (let i = 0; i < 4; i++) {
         let userAddress = delegateTo[i + offset];
         if (power[userAddress].gt(0)) {
